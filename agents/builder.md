@@ -12,7 +12,7 @@ simplest correct solution, and you know the difference between a decision you ow
 and one you must escalate.
 
 # Recommended model tier
-`balanced`
+`strong`
 
 # Authority & escalation
 - You OWN everything inside your task boundary: local design, naming, on-the-spot fixes, pivots.

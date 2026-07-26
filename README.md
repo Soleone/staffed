@@ -30,7 +30,10 @@ everything:
 ## Install
 
 ```bash
-pnpm dlx staffed enable      # or: npx staffed enable
+pnpm dlx staffed enable                   # inherit the parent session model
+pnpm dlx staffed enable --profile openai  # cost/time-oriented OpenAI defaults
+pnpm dlx staffed status                   # exact stamped model, or inherited/legacy
+# npx staffed ... works too
 ```
 
 That does two things, both required:
@@ -44,7 +47,7 @@ enumerate agents — so **on their own, these personas are undiscoverable.** The
 what points at them, and it carries what no single persona can state: how to size a
 pipeline, the artifact convention, and the escalation loop.
 
-Nothing of yours is modified. Confirm both halves with `staffed status`.
+Nothing of yours is modified. Confirm both halves with `pnpm dlx staffed status`.
 
 There is no API to learn, so using it is a sentence:
 
@@ -56,10 +59,10 @@ That phrase (or "use Staffed", or `/skill:staffed`) engages the org. The session
 dispatches from there, and you read `artifacts/` instead of a wall of chat.
 
 ```bash
-staffed enable pm architect     # only these, additive
-staffed enable --scope project  # into ./.pi/agents/, committable
-staffed disable reviewer        # drop one
-staffed status                  # what is enabled, and whether it drifted
+pnpm dlx staffed enable pm architect     # only these, additive
+pnpm dlx staffed enable --scope project  # into ./.pi/agents/, committable
+pnpm dlx staffed disable reviewer        # drop one
+pnpm dlx staffed status                  # what is enabled, and whether it drifted
 ```
 
 Installs are tracked in a manifest next to the personas, so `disable` removes only
@@ -189,10 +192,14 @@ with:
 `models.json` maps tiers to concrete models, per host profile:
 
 ```bash
-staffed tier                                              # show the mapping
-staffed tier deep --model claude-opus-5 --thinking xhigh  # declare one
-staffed doctor                                            # verify ids exist here
-staffed enable --profile pi                               # apply while rendering
+pnpm dlx staffed tier                           # show the mapping
+pnpm dlx staffed doctor                         # verify ids visible to this Pi install
+pnpm dlx staffed enable                         # inherit the parent session model
+pnpm dlx staffed enable --profile openai        # apply OpenAI defaults while rendering
+pnpm dlx staffed status                         # exact stamped model, or inherited/legacy
+
+# From a clone or persistent install (not pnpm dlx's throwaway cache):
+staffed tier strong --model MODEL --thinking LEVEL
 ```
 
 A tier resolves to a **model and a thinking level**, stored separately because hosts
@@ -206,14 +213,35 @@ into the enabled copy and leaves `agents/` untouched, so the repo stays portable
 there is no unpin step to forget — `validate` rejects a `model:` appearing in source at
 all. Without `--profile`, personas inherit the parent session's model.
 
-Three tiers exist (`fast`, `balanced`, `deep`) and the roster uses two. Three personas
-describe a *conditional* tier — `reviewer` scales with change risk, `writer` with
-whether it is naming a core concept. Frontmatter cannot express that and does not need
-to: `subagent`'s call-site `model` beats frontmatter, so a pin is only a default and
-the orchestrator keeps the last word.
+Four tiers exist (`fast`, `balanced`, `strong`, `deep`). The current assignments are:
+
+- `fast`: no personas
+- `balanced`: `researcher`, `writer`, `marketer`, `analyst`
+- `strong`: `builder`, `reviewer`, `ops`
+- `deep`: `pm`, `architect`, `ux`, `artist`
+
+The opt-in `openai` profile is an allocation strategy oriented toward total cost/time
+per accepted outcome; it is not a benchmark or a guarantee:
+
+| Tier | Model | Thinking |
+|---|---|---|
+| `fast` | `openai-codex/gpt-5.6-terra` | `low` |
+| `balanced` | `openai-codex/gpt-5.6-terra` | `medium` |
+| `strong` | `openai-codex/gpt-5.6-sol` | `medium` |
+| `deep` | `openai-codex/gpt-5.6-sol` | `high` |
+
+Some personas describe a *conditional* tier — `reviewer` scales with change risk and
+`writer` with whether it is naming a core concept. Frontmatter cannot express that and
+does not need to: profile pins are render-time defaults, and `subagent`'s call-site
+`model` overrides them. Plain `staffed enable` uses profile `none`, stamps no model,
+and inherits the parent session model. `staffed status` reports the exact model tracked
+at installation, inherited selection, or an unknown legacy manifest; it never guesses
+an old install from today's profile.
 
 > `models.json` lives inside the package, so `tier` declarations made under `pnpm dlx`
-> are written to a throwaway cache. Declare tiers from a clone or a real install.
+> are written to a throwaway cache. For a durable adjustment, run `staffed tier ...`
+> from a clone or a persistent installed package, then re-enable to stamp the new
+> mapping.
 
 ## How the host finds them
 

@@ -1,7 +1,14 @@
 // Argument parsing and output. All behaviour lives in the sibling modules.
 
 import { loadPersonas, validate } from "./personas.mjs";
-import { formatTier, loadConfig, normalizeTier, resolveProfile, setProfile, setTier } from "./models.mjs";
+import {
+  formatTier,
+  loadConfig,
+  resolveProfile,
+  setProfile,
+  setTier,
+  validateModelConfig,
+} from "./models.mjs";
 import { DEFAULT_HOST, HOSTS, resolveHost } from "./hosts.mjs";
 import * as placement from "./install.mjs";
 import { STAGES, generate, inspectBrief, removeBrief, writeBrief } from "./brief.mjs";
@@ -10,7 +17,8 @@ import { inspectSkill, removeSkill, writeSkill, generate as skillText } from "./
 const HELP = `staffed — coordinated subagent roles for any project
 
 roster
-  staffed enable                 enable every persona
+  staffed enable                 enable every persona; inherit the parent model
+  staffed enable --profile openai  enable with cost/time-oriented OpenAI defaults
   staffed enable pm architect    enable only these (additive)
   staffed disable                disable every persona we enabled
   staffed disable pm             disable only these
@@ -24,9 +32,9 @@ discovery (agents are invisible to a host session; something must point at them)
   staffed brief --remove         take it back out
 
 tiers
-  staffed tier                               show tier -> model/thinking
-  staffed tier deep --model X --thinking Y   declare what a tier means
-  staffed tier --profile claude-code         switch the default profile
+  staffed tier                                 show four tier -> model/thinking rows
+  staffed tier strong --model X --thinking Y   declare what the strong tier means
+  staffed tier --profile openai                switch the default profile
   staffed doctor                             check models against this install
 
 options
@@ -45,7 +53,9 @@ options
 
 In pi a persona is enabled purely by being present in an agents directory, so
 enable/disable place and remove files. Sources are never mutated: a model profile is
-applied while rendering, leaving the repo portable with no unpin step to forget.`;
+applied while rendering, leaving the repo portable with no unpin step to forget.
+Plain enable inherits the parent model; a profile pins render-time defaults which a
+call-site model can override. For durable tier edits, use a clone or persistent install.`;
 
 const LABEL = {
   enabled: "enabled",
@@ -119,15 +129,19 @@ function warnUnverified(profile) {
   );
 }
 
-function printTiers(profileArg) {
-  const cfg = loadConfig();
-  const { key, map, unverified } = resolveProfile(profileArg ?? true);
+export function printTiers(profileArg, cfg = loadConfig()) {
+  const { key, map, unverified, fallbacks = [] } = resolveProfile(profileArg ?? true, cfg);
   console.log(`profile ${key}${profileArg ? "" : "  (default from models.json)"}`);
   const rows = Object.entries(map).map(([tier, t]) => [
     tier,
     t.model,
     t.thinking ?? "—",
-    unverified.includes(tier) ? "unverified" : "",
+    [
+      unverified.includes(tier) ? "unverified" : "",
+      fallbacks.some((f) => f.tier === tier) ? "compatibility fallback from balanced" : "",
+    ]
+      .filter(Boolean)
+      .join("; "),
   ]);
   const w = [pad(rows, 0), pad(rows, 1), pad(rows, 2)];
   console.log(`  ${"tier".padEnd(w[0])}  ${"model".padEnd(w[1])}  ${"thinking".padEnd(w[2])}`);
@@ -141,6 +155,12 @@ function printTiers(profileArg) {
   console.log();
   for (const [n, t, m] of prows) console.log(`  ${n.padEnd(pw)}  ${t.padEnd(9)} ${m}`);
   warnUnverified({ key, unverified });
+  if (fallbacks.length) {
+    console.log(
+      `\ncompatibility: profile "${key}" has no explicit strong tier; declare it with ` +
+        "`staffed tier strong --model <m> --thinking <t>`.",
+    );
+  }
 }
 
 /** Compare configured models against what this pi install actually offers. */
@@ -155,23 +175,34 @@ async function doctor() {
   let known = new Set();
   try {
     const m = JSON.parse(readFileSync(join(homedir(), ".pi", "agent", "models.json"), "utf8"));
-    for (const p of Object.values(m.providers ?? {})) for (const x of p.models ?? []) known.add(x.id);
+    for (const [provider, p] of Object.entries(m.providers ?? {})) {
+      for (const x of p.models ?? []) {
+        known.add(x.id);
+        known.add(`${provider}/${x.id}`);
+      }
+    }
   } catch {
     console.log("\ncould not read ~/.pi/agent/models.json — cannot verify model ids");
   }
-  if (process.env.PI_MODEL) known.add(process.env.PI_MODEL);
+  if (process.env.PI_MODEL) {
+    known.add(process.env.PI_MODEL);
+    if (process.env.PI_PROVIDER) known.add(`${process.env.PI_PROVIDER}/${process.env.PI_MODEL}`);
+  }
 
   console.log(`\nmodels known to this install: ${known.size || "none"}`);
-  for (const [key, tiers] of Object.entries(cfg.profiles)) {
+  for (const key of Object.keys(cfg.profiles)) {
     if (key === "inherit") continue;
+    const { map, fallbacks = [] } = resolveProfile(key, cfg);
     console.log(`\nprofile ${key}`);
-    for (const [tier, raw] of Object.entries(tiers)) {
-      const t = normalizeTier(raw);
+    for (const [tier, t] of Object.entries(map)) {
       const ok = known.size === 0 ? "?" : known.has(t.model) ? "ok" : "NOT FOUND";
-      console.log(`  ${tier.padEnd(9)} ${formatTier(t).padEnd(30)} ${ok}`);
+      const note = fallbacks.some((f) => f.tier === tier) ? " (compatibility fallback from balanced)" : "";
+      console.log(`  ${tier.padEnd(9)} ${formatTier(t).padEnd(30)} ${ok}${note}`);
     }
   }
-  console.log("\n`NOT FOUND` on a non-pi profile is expected — those models belong to another host.");
+  console.log(
+    "\nAvailability, including non-Pi and cross-provider profiles, depends on the providers installed in this Pi environment.",
+  );
   return 0;
 }
 
@@ -185,7 +216,10 @@ function printStatus(s) {
       : "manifest none — nothing enabled here",
   );
   console.log();
-  const rows = s.items.map((i) => [i.persona.name, i.persona.tier, LABEL[i.state] ?? i.state, modelOf(i)]);
+  const rows = [
+    ["persona", "recommended", "state", "installed"],
+    ...s.items.map((i) => [i.persona.name, i.persona.tier, LABEL[i.state] ?? i.state, modelOf(i)]),
+  ];
   const w = [pad(rows, 0), pad(rows, 1), pad(rows, 2)];
   for (const [n, t, st, m] of rows) {
     console.log(`  ${n.padEnd(w[0])}  ${t.padEnd(w[1])}  ${st.padEnd(w[2])}  ${m}`.trimEnd());
@@ -213,7 +247,16 @@ function printStatus(s) {
   if (b.state !== "absent") line("brief", b.state, b.file, "absent");
 }
 
-const modelOf = (i) => (i.tracked?.profile && i.tracked.profile !== "none" ? `profile ${i.tracked.profile}` : "");
+const modelOf = (i) => {
+  if (["disabled", "foreign"].includes(i.state)) return "—";
+  if (i.tracked?.type === "link") return "source link; model inherited";
+  if (i.tracked?.type !== "copy") return "—";
+  if (!i.tracked.tier) return "unknown (legacy manifest; re-enable to refresh)";
+  if (i.tracked.profile === "none" && !i.tracked.model) return `${i.tracked.tier} → inherited (none)`;
+  if (!i.tracked.model) return "unknown (incomplete manifest; re-enable to refresh)";
+  const value = i.tracked.thinking ? `${i.tracked.model}:${i.tracked.thinking}` : i.tracked.model;
+  return `${i.tracked.tier} → ${value} (${i.tracked.profile ?? "unknown"})`;
+};
 
 export async function main(argv = process.argv.slice(2)) {
   const { opts, rest } = parse(argv);
@@ -289,7 +332,7 @@ export async function main(argv = process.argv.slice(2)) {
 
   if (cmd === "validate") {
     const personas = loadPersonas();
-    const problems = validate(personas, STAGES);
+    const problems = [...validate(personas, STAGES), ...validateModelConfig(loadConfig())];
     console.log(`${personas.length} personas`);
     if (!problems.length) {
       console.log("0 problems");
@@ -306,9 +349,9 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   if (cmd === "enable" || cmd === "install") {
-    const problems = validate(loadPersonas(), STAGES);
+    const problems = [...validate(loadPersonas(), STAGES), ...validateModelConfig(loadConfig())];
     if (problems.length) {
-      console.error(`refusing to enable — roster has ${problems.length} problem(s):`);
+      console.error(`refusing to enable — configuration has ${problems.length} problem(s):`);
       for (const p of problems) console.error(`  - ${p}`);
       return 1;
     }

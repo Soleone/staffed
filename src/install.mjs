@@ -141,7 +141,14 @@ export function enable(opts) {
       files[item.file] = { type: "link", target };
     } else {
       writeFileSync(item.path, item.content);
-      files[item.file] = { type: "copy", hash: sha(item.content), profile: p.profile.key };
+      files[item.file] = {
+        type: "copy",
+        hash: sha(item.content),
+        profile: p.profile.key,
+        tier: item.persona.tier,
+        ...(item.tier ? { model: item.tier.model } : {}),
+        ...(item.tier?.thinking != null ? { thinking: item.tier.thinking } : {}),
+      };
     }
     wrote.push(item.file);
   }

@@ -1,23 +1,29 @@
 {
   "//": [
     "Tier -> { model, thinking } map. THIS IS THE ONLY FILE TO EDIT WHEN MODELS CHANGE.",
-    "Each persona declares a tier (fast|balanced|deep) in its own file; this maps tiers",
+    "Each persona declares a tier (fast|balanced|strong|deep) in its own file; this maps tiers",
     "to concrete models for one host, so it stays correct as the roster grows.",
     "",
     "'model:thinking' shorthand is accepted and normalized. Thinking is stored apart",
     "from the model because hosts spell it differently: pi appends ':level', while",
     "Claude Code has no per-agent equivalent and drops it.",
     "",
-    "Edit via: staffed tier deep --model X --thinking xhigh",
+    "Inspect with: staffed tier",
+    "Edit via: staffed tier strong --model X --thinking high",
+    "Select defaults with: staffed tier --profile openai",
     "'unverified' lists tiers seeded by guesswork; declaring one clears its entry.",
     "Check your own install with: staffed doctor"
   ],
-  "profile": "pi",
+  "profile": "openai",
   "profiles": {
     "pi": {
       "deep": {
         "model": "claude-opus-5",
         "thinking": "xhigh"
+      },
+      "strong": {
+        "model": "claude-sonnet-4-6",
+        "thinking": "medium"
       },
       "balanced": {
         "model": "claude-sonnet-4-6",
@@ -32,6 +38,9 @@
       "deep": {
         "model": "opus"
       },
+      "strong": {
+        "model": "sonnet"
+      },
       "balanced": {
         "model": "sonnet"
       },
@@ -43,11 +52,32 @@
       "deep": {
         "model": "inherit"
       },
+      "strong": {
+        "model": "inherit"
+      },
       "balanced": {
         "model": "inherit"
       },
       "fast": {
         "model": "inherit"
+      }
+    },
+    "openai": {
+      "fast": {
+        "model": "openai-codex/gpt-5.6-terra",
+        "thinking": "low"
+      },
+      "balanced": {
+        "model": "openai-codex/gpt-5.6-terra",
+        "thinking": "medium"
+      },
+      "strong": {
+        "model": "openai-codex/gpt-5.6-sol",
+        "thinking": "medium"
+      },
+      "deep": {
+        "model": "openai-codex/gpt-5.6-sol",
+        "thinking": "high"
       }
     }
   }

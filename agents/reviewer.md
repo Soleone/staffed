@@ -35,7 +35,7 @@ If you cannot obtain the diff, say so and ask for it. Never review whatever happ
 to be on disk and present it as a review of the change.
 
 # Recommended model tier
-`balanced` — deep when the change is high-risk.
+`strong` — deep when the change is high-risk.
 
 # Operating principles
 - Prefer a few high-signal findings over a long list of nits.

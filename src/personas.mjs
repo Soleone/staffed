@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const AGENTS_DIR = join(ROOT, "agents");
-export const TIERS = ["fast", "balanced", "deep"];
+export const TIERS = ["fast", "balanced", "strong", "deep"];
 
 // reviewer writes nothing; builder's artifact is the code. Neither owns a directory.
 const NO_ARTIFACT = new Set(["reviewer"]);
