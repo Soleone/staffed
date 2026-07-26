@@ -41,16 +41,36 @@ test("generated skill requires compact outputs and targeted re-review", () => {
   assert.match(skill, /Do not launch a second reviewer for low-risk nits/);
 });
 
+test("generated skill defaults effort low and makes escalation explicit", () => {
+  const skill = oneLine(generateSkill(enabled, personas));
+  assert.match(skill, /Every dispatch starts at effort `low`/);
+  assert.match(skill, /Effort controls how far the persona investigates, not the care or correctness/);
+  assert.match(skill, /`Axis` \(`effort`, `tier`, or `both`\)/);
+  assert.match(skill, /parent decides whether to redispatch/);
+  assert.match(skill, /Never turn a completed advisory stage into deeper planning or implementation/);
+  assert.match(skill, /\| `pm` \| balanced \| low \|/);
+  assert.match(skill, /\| `architect` \| strong \| low \|/);
+});
+
 test("generated brief preserves efficiency guidance when installed globally", () => {
-  const brief = generateBrief(enabled);
+  const brief = oneLine(generateBrief(enabled));
   assert.match(brief, /default to one persona/);
   assert.match(brief, /pipeline above is an ordering reference, not a prescription/);
   assert.match(brief, /Before more than two dispatches/);
   assert.match(brief, /re-review only prior findings and changed hunks/);
+  assert.match(brief, /Start every dispatch at effort `low`/);
+  assert.match(brief, /higher `effort`, a higher model `tier`, or both/);
+  assert.match(brief, /without approval/);
 });
 
-test("every persona carries an explicit compact effort budget", () => {
+test("every persona carries portable effort defaults and an escalation contract", () => {
   for (const persona of personas) {
+    assert.equal(persona.effort, "low", persona.name);
+    assert.match(persona.body, /^# Default model tier$/m, persona.name);
+    assert.match(persona.body, /^# Default effort\n`low`$/m, persona.name);
+    assert.match(persona.body, /shortest credible pass/, persona.name);
+    assert.match(persona.body, /Do not silently exceed the assigned effort/, persona.name);
+    assert.match(persona.body, /`Axis` \(`effort`, `tier`, or `both`\)/, persona.name);
     assert.match(persona.body, /^# Effort and output budget$/m, persona.name);
     assert.match(persona.body, /compact mode|Scale scrutiny to impact/, persona.name);
     assert.match(persona.body, /Keep every required (?:output )?heading/, persona.name);

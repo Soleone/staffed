@@ -23,7 +23,7 @@ roster
   staffed disable                disable every persona we enabled
   staffed disable pm             disable only these
   staffed status                 what is enabled, and whether it drifted
-  staffed list                   the roster and each persona's tier
+  staffed list                   the roster with default model tier and effort
 
 discovery (agents are invisible to a host session; something must point at them)
   staffed skill                  print the Staffed skill — installed by default
@@ -150,10 +150,12 @@ export function printTiers(profileArg, cfg = loadConfig()) {
   }
   console.log(`\nprofiles: ${Object.keys(cfg.profiles).join(", ")}`);
 
-  const prows = loadPersonas().map((p) => [p.name, p.tier, formatTier(map[p.tier])]);
-  const pw = pad(prows, 0);
+  const prows = loadPersonas().map((p) => [p.name, p.tier, p.effort, formatTier(map[p.tier])]);
+  const pw = [pad(prows, 0), pad(prows, 1), pad(prows, 2)];
   console.log();
-  for (const [n, t, m] of prows) console.log(`  ${n.padEnd(pw)}  ${t.padEnd(9)} ${m}`);
+  for (const [n, t, e, m] of prows) {
+    console.log(`  ${n.padEnd(pw[0])}  ${t.padEnd(pw[1])}  ${e.padEnd(pw[2])}  ${m}`);
+  }
   warnUnverified({ key, unverified });
   if (fallbacks.length) {
     console.log(
@@ -217,12 +219,20 @@ function printStatus(s) {
   );
   console.log();
   const rows = [
-    ["persona", "recommended", "state", "installed"],
-    ...s.items.map((i) => [i.persona.name, i.persona.tier, LABEL[i.state] ?? i.state, modelOf(i)]),
+    ["persona", "tier", "effort", "state", "installed"],
+    ...s.items.map((i) => [
+      i.persona.name,
+      i.persona.tier,
+      i.persona.effort,
+      LABEL[i.state] ?? i.state,
+      modelOf(i),
+    ]),
   ];
-  const w = [pad(rows, 0), pad(rows, 1), pad(rows, 2)];
-  for (const [n, t, st, m] of rows) {
-    console.log(`  ${n.padEnd(w[0])}  ${t.padEnd(w[1])}  ${st.padEnd(w[2])}  ${m}`.trimEnd());
+  const w = [pad(rows, 0), pad(rows, 1), pad(rows, 2), pad(rows, 3)];
+  for (const [n, t, e, st, m] of rows) {
+    console.log(
+      `  ${n.padEnd(w[0])}  ${t.padEnd(w[1])}  ${e.padEnd(w[2])}  ${st.padEnd(w[3])}  ${m}`.trimEnd(),
+    );
   }
   const enabled = s.items.filter((i) => i.state === "enabled").map((i) => i.persona.name);
   const drift = s.items.filter((i) => !["enabled", "disabled"].includes(i.state));
@@ -269,9 +279,16 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   if (cmd === "list") {
-    const rows = loadPersonas().map((p) => [p.name, p.tier ?? "?", p.meta.description ?? ""]);
-    const w = pad(rows, 0);
-    for (const [n, t, d] of rows) console.log(`  ${n.padEnd(w)}  ${t.padEnd(9)} ${d.split(". ")[0]}.`);
+    const rows = loadPersonas().map((p) => [
+      p.name,
+      p.tier ?? "?",
+      p.effort ?? "?",
+      p.meta.description ?? "",
+    ]);
+    const w = [pad(rows, 0), pad(rows, 1), pad(rows, 2)];
+    for (const [n, t, e, d] of rows) {
+      console.log(`  ${n.padEnd(w[0])}  ${t.padEnd(w[1])}  ${e.padEnd(w[2])}  ${d.split(". ")[0]}.`);
+    }
     console.log(`\n${rows.length} personas`);
     return 0;
   }

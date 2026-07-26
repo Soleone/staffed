@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { TIERS, loadPersonas } from "../src/personas.mjs";
+import { EFFORTS, TIERS, loadPersonas } from "../src/personas.mjs";
 import { loadConfig, resolveProfile, validateModelConfig } from "../src/models.mjs";
 import { plan } from "../src/install.mjs";
 import { printTiers } from "../src/cli.mjs";
@@ -16,10 +16,12 @@ test("canonical tiers and persona assignments are exact", () => {
   for (const names of Object.values(groups)) names.sort();
   assert.deepEqual(groups, {
     fast: [],
-    balanced: ["analyst", "marketer", "researcher", "writer"],
-    strong: ["builder", "ops", "reviewer"],
-    deep: ["architect", "artist", "pm", "ux"],
+    balanced: ["analyst", "marketer", "pm", "researcher", "writer"],
+    strong: ["architect", "builder", "ops", "reviewer"],
+    deep: ["artist", "ux"],
   });
+  assert.deepEqual(EFFORTS, ["low", "medium", "high"]);
+  assert.ok(loadPersonas().every((persona) => persona.effort === "low"));
 });
 
 test("openai profile resolves the approved four mappings", () => {
@@ -77,7 +79,7 @@ test("approved representative personas render exact OpenAI values", () => {
       assert.match(byName.get(name), /^model: openai-codex\/gpt-5\.6-sol:medium$/m);
     }
     assert.match(byName.get("researcher"), /^model: openai-codex\/gpt-5\.6-terra:medium$/m);
-    assert.match(byName.get("architect"), /^model: openai-codex\/gpt-5\.6-sol:high$/m);
+    assert.match(byName.get("architect"), /^model: openai-codex\/gpt-5\.6-sol:medium$/m);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

@@ -8,6 +8,7 @@ import { dirname, join } from "node:path";
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const AGENTS_DIR = join(ROOT, "agents");
 export const TIERS = ["fast", "balanced", "strong", "deep"];
+export const EFFORTS = ["low", "medium", "high"];
 
 // reviewer writes nothing; builder's artifact is the code. Neither owns a directory.
 const NO_ARTIFACT = new Set(["reviewer"]);
@@ -39,15 +40,26 @@ function readFrontmatter(fm) {
   return out;
 }
 
-/** Tier is the first backticked token under "# Recommended model tier". */
-function readTier(body) {
-  const line = body.match(/^# Recommended model tier\n(.*)$/m)?.[1];
-  if (!line) return { tier: null, reason: 'no "# Recommended model tier" section' };
-  const tier = line.match(/`([a-z]+)`/)?.[1];
-  if (!TIERS.includes(tier)) {
-    return { tier: null, reason: `tier must be a backticked ${TIERS.join("|")} — got: ${line.trim()}` };
+/** Defaults are Markdown body sections so persona files stay portable across hosts. */
+function readDefault(body, heading, values, label) {
+  const line = body.match(new RegExp(`^# ${heading}\\n(.*)$`, "m"))?.[1];
+  if (!line) return { value: null, reason: `no "# ${heading}" section` };
+  const value = line.match(/`([a-z]+)`/)?.[1];
+  if (!values.includes(value)) {
+    return { value: null, reason: `${label} must be a backticked ${values.join("|")} — got: ${line.trim()}` };
   }
-  return { tier };
+  return { value };
+}
+
+function readTier(body) {
+  const heading = /^# Default model tier$/m.test(body) ? "Default model tier" : "Recommended model tier";
+  const { value, reason } = readDefault(body, heading, TIERS, "tier");
+  return { tier: value, reason };
+}
+
+function readEffort(body) {
+  const { value, reason } = readDefault(body, "Default effort", EFFORTS, "effort");
+  return { effort: value, reason };
 }
 
 /** Load every persona. Returns { name, file, meta, body, tier, text }. */
@@ -60,7 +72,8 @@ export function loadPersonas(dir = AGENTS_DIR) {
       const parts = split(text);
       const name = file.replace(/\.md$/, "");
       if (!parts) return { name, file, text, meta: {}, body: "", tier: null, broken: "no frontmatter" };
-      const { tier, reason } = readTier(parts.body);
+      const tier = readTier(parts.body);
+      const effort = readEffort(parts.body);
       return {
         name,
         file,
@@ -68,8 +81,9 @@ export function loadPersonas(dir = AGENTS_DIR) {
         fm: parts.fm,
         body: parts.body,
         meta: readFrontmatter(parts.fm),
-        tier,
-        broken: reason ?? null,
+        tier: tier.tier,
+        effort: effort.effort,
+        broken: [tier.reason, effort.reason].filter(Boolean).join("; ") || null,
       };
     });
 }
@@ -94,7 +108,7 @@ export function validate(personas, stages) {
     if (!p.meta.description) at("no description");
     if (p.meta.tools) at("declares a tools allowlist (containment here is prompt-level)");
     if (p.meta.model) at("has a pinned model — pinning belongs at install time, not in source");
-    if (!/^# Output \(always, in this structure\)/m.test(p.body)) at("no output contract");
+    if (!/^# Output \(always in this structure, unless escalating\)/m.test(p.body)) at("no output contract");
     if (!/^# Effort and output budget/m.test(p.body)) at("no effort and output budget");
     if (!NO_ARTIFACT.has(p.name) && !/^# Artifact/m.test(p.body)) at("no # Artifact section");
 

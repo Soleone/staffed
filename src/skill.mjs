@@ -57,7 +57,8 @@ export function generate(enabled, personas = []) {
   const stages = STAGES.filter((s) => set.has(s.name));
   const partial = stages.length < STAGES.length;
   const has = (n) => set.has(n);
-  const blurb = (n) => personas.find((p) => p.name === n)?.summary ?? "";
+  const persona = (n) => personas.find((p) => p.name === n);
+  const blurb = (n) => persona(n)?.summary ?? "";
 
   // A partial roster can collapse two sizes onto the same chain (drop `architect` and a
   // feature looks like a product). Merge the labels rather than printing the row twice.
@@ -133,11 +134,38 @@ export function generate(enabled, personas = []) {
         "a duplicate task document.",
     ),
     "",
+    "## Effort and escalation",
+    "",
+    wrap(
+      "Every dispatch starts at effort `low` unless the user requested otherwise or approved an " +
+        "escalation. Put `Effort: low`, `Effort: medium`, or `Effort: high` in the task. Effort controls " +
+        "how far the persona investigates, not the care or correctness of its work. Low means the " +
+        "shortest credible pass, not a careless one.",
+    ),
+    "",
+    wrap(
+      "Before expanding, ask: can downstream act; could the remaining uncertainty materially change " +
+        "that action; and is the next investigation likely to resolve it? Stop when the handoff is " +
+        "dependable and more work is unlikely to change it. Do not silently raise effort.",
+    ),
+    "",
+    wrap(
+      "When material uncertainty remains, the persona stops and returns an `## Escalation` naming " +
+        "`Axis` (`effort`, `tier`, or `both`), `Requested`, `Reason`, `Expected gain`, and `Safe fallback`. " +
+        "Approve more effort when additional investigation can resolve the issue; approve a higher " +
+        "model tier when stronger synthesis is needed; route to another persona when the work belongs " +
+        "elsewhere. The parent decides whether to redispatch. Never turn a completed advisory stage " +
+        "into deeper planning or implementation without the user's approval.",
+    ),
+    "",
     "## The roster",
     "",
-    "| Persona | Dispatch it for |",
-    "|---|---|",
-    ...stages.map((s) => `| \`${s.name}\` | ${blurb(s.name) || s.role} |`),
+    "| Persona | Default tier | Default effort | Dispatch it for |",
+    "|---|---|---|---|",
+    ...stages.map((s) => {
+      const p = persona(s.name);
+      return `| \`${s.name}\` | ${p?.tier ?? "inherit"} | ${p?.effort ?? "low"} | ${blurb(s.name) || s.role} |`;
+    }),
     "",
     wrap(
       "Route by each persona's `description`, which states what it owns and what it must refuse. " +

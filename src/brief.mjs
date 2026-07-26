@@ -83,6 +83,15 @@ export function generate(enabled) {
         "Require the shortest artifact that enables the next action, pass its path downstream, " +
         "and re-review only prior findings and changed hunks.",
     ),
+    "",
+    wrap(
+      "Start every dispatch at effort `low` unless the user requested otherwise or approved an " +
+        "escalation, and state the effort in the task. Low means the shortest credible pass. Stop " +
+        "when downstream can act and further work is unlikely to change the result. A persona with " +
+        "material uncertainty must stop and request higher `effort`, a higher model `tier`, or both, " +
+        "with its reason, expected gain, and safe fallback; the parent decides whether to redispatch. " +
+        "Do not continue from an advisory stage into deeper planning or implementation without approval.",
+    ),
   ];
 
   if (partial) {

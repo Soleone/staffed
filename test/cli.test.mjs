@@ -38,8 +38,8 @@ test("project enable records exact pinned install facts and status uses them", (
     assert.match(manifest.files["builder.md"].hash, /^[a-f0-9]{16}$/);
 
     const status = run(["status", "--scope", "project"], { cwd });
-    assert.match(status, /persona\s+recommended\s+state\s+installed/);
-    assert.match(status, /builder\s+strong\s+enabled\s+strong → openai-codex\/gpt-5\.6-sol:medium \(openai\)/);
+    assert.match(status, /persona\s+tier\s+effort\s+state\s+installed/);
+    assert.match(status, /builder\s+strong\s+low\s+enabled\s+strong → openai-codex\/gpt-5\.6-sol:medium \(openai\)/);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

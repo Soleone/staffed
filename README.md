@@ -79,7 +79,7 @@ overwriting it. `--force` when that is what you actually want.
 | `status` | what is enabled, per-persona, plus drift and brief health |
 | `skill` | print the generated skill |
 | `brief` | print the optional AGENTS.md block; `--write` / `--remove` to apply it |
-| `list` | the roster with each persona's tier |
+| `list` | the roster with each persona's default model tier and effort |
 | `tier [name]` | show tier → model + thinking, or declare one |
 | `doctor` | check configured model ids against this pi install |
 | `validate` | structural checks on the roster |
@@ -117,8 +117,9 @@ entire mechanism.
 | `marketer` | positioning, launch | `artifacts/marketer/` | positioning + {headline, body, CTA} + checklist |
 | `analyst` | product metrics, experiments, readout | `artifacts/analyst/` | metric definitions + analysis + recommendation |
 
-Each persona also declares a model tier in its own file; `staffed tier` prints the
-mapping. See [Model tiers](#model-tiers).
+Each persona declares a default model tier and a host-agnostic effort level in its
+own file; `staffed list` shows both and `staffed tier` prints the model mapping. See
+[Model tiers](#model-tiers) and [Effort](#effort).
 
 ## Suggested pipeline
 
@@ -180,18 +181,18 @@ a different root via `subagent`'s `output` parameter when a caller needs one.
 
 ## Model tiers
 
-Two different clocks, so two different files. **Tier is a property of the persona** and
-rarely changes — an architect wants deep reasoning regardless of what ships next
-quarter. **Model identity is a property of the host** and changes every few months.
-Pinning model strings into eleven personas couples them and buys you eleven files to
-edit on every release; keeping them apart makes a refresh one edit at any roster size.
+Two different clocks, so two different files. **Default tier is the capability a
+persona normally needs**; an unusually consequential assignment can request a higher
+one. **Model identity is a property of the host** and changes every few months. Pinning
+model strings into eleven personas couples them and buys you eleven files to edit on
+every release; keeping them apart makes a refresh one edit at any roster size.
 
-So each persona declares a tier as a token a script can read and a human can argue
-with:
+Each persona declares its default tier as a Markdown-body token, preserving the common
+subagent file format while giving both scripts and humans something to reason about:
 
 ```markdown
-# Recommended model tier
-`balanced` — deep when the decision hinges on synthesis rather than gathering.
+# Default model tier
+`balanced` — request `strong` or `deep` when the decision hinges on synthesis.
 ```
 
 `models.json` maps tiers to concrete models, per host profile:
@@ -218,12 +219,12 @@ into the enabled copy and leaves `agents/` untouched, so the repo stays portable
 there is no unpin step to forget — `validate` rejects a `model:` appearing in source at
 all. Without `--profile`, personas inherit the parent session's model.
 
-Four tiers exist (`fast`, `balanced`, `strong`, `deep`). The current assignments are:
+Four tiers exist (`fast`, `balanced`, `strong`, `deep`). The current defaults are:
 
 - `fast`: no personas
-- `balanced`: `researcher`, `writer`, `marketer`, `analyst`
-- `strong`: `builder`, `reviewer`, `ops`
-- `deep`: `pm`, `architect`, `ux`, `artist`
+- `balanced`: `researcher`, `pm`, `writer`, `marketer`, `analyst`
+- `strong`: `architect`, `builder`, `reviewer`, `ops`
+- `deep`: `ux`, `artist`
 
 The opt-in `openai` profile is an allocation strategy oriented toward total cost/time
 per accepted outcome; it is not a benchmark or a guarantee:
@@ -235,18 +236,42 @@ per accepted outcome; it is not a benchmark or a guarantee:
 | `strong` | `openai-codex/gpt-5.6-sol` | `medium` |
 | `deep` | `openai-codex/gpt-5.6-sol` | `high` |
 
-Some personas describe a *conditional* tier — `reviewer` scales with change risk and
-`writer` with whether it is naming a core concept. Frontmatter cannot express that and
-does not need to: profile pins are render-time defaults, and `subagent`'s call-site
-`model` overrides them. Plain `staffed enable` uses profile `none`, stamps no model,
-and inherits the parent session model. `staffed status` reports the exact model tracked
-at installation, inherited selection, or an unknown legacy manifest; it never guesses
-an old install from today's profile.
+Personas state when a higher tier may be worthwhile, but they do not silently promote
+themselves. They return an escalation request and the parent decides whether to
+redispatch with a call-site model override. Frontmatter does not need a custom tier
+field: profile pins are render-time defaults, and the body carries the portable policy.
+Plain `staffed enable` uses profile `none`, stamps no model, and inherits the parent
+session model. `staffed status` reports the exact model tracked at installation,
+inherited selection, or an unknown legacy manifest; it never guesses an old install
+from today's profile.
 
 > `models.json` lives inside the package, so `tier` declarations made under `pnpm dlx`
 > are written to a throwaway cache. For a durable adjustment, run `staffed tier ...`
 > from a clone or a persistent installed package, then re-enable to stamp the new
 > mapping.
+
+## Effort
+
+Effort is a second, independent axis: tier chooses **who is capable enough**, while
+effort chooses **how far that persona should pursue this assignment**. Every persona
+declares `low` in a `# Default effort` Markdown section. This is behavioral guidance,
+not host-specific frontmatter and not the profile's native model-thinking setting.
+
+- `low`: the shortest credible pass that produces a dependable handoff
+- `medium`: investigate a named material uncertainty or validate a consequential assumption
+- `high`: resolve expensive, irreversible, unusually ambiguous, or high-risk work
+
+The parent includes `Effort: low|medium|high` in each task. Before expanding, the
+persona asks whether downstream can act, whether remaining uncertainty could
+materially change that action, and whether the next investigation is likely to resolve
+it. If more work is unlikely to change the result, it stops.
+
+A persona never silently spends at a higher effort. When blocked by material
+uncertainty it returns a compact `## Escalation` with the requested axis (`effort`,
+`tier`, or both), reason, expected gain, and safe fallback. More investigation calls
+for effort; stronger synthesis calls for tier; work outside the role routes to another
+persona. The parent approves or declines the redispatch. Finishing an advisory stage
+also does not authorize deeper planning or implementation without user approval.
 
 ## How the host finds them
 
