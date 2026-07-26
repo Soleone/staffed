@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/Soleone/staffed/compare/v1.2.0...v1.3.0) (2026-07-26)
+
+
+### Features
+
+* Claude Code compatibility ([6480ba2](https://github.com/Soleone/staffed/commit/6480ba220b51371972f8ab5ae2adb2b3d0b6ee34))
+* **cli:** auto-detect agent integrations ([0052782](https://github.com/Soleone/staffed/commit/00527823514e5334ffee18e88dab6794d69f8b20))
+
 ## [1.2.0](https://github.com/Soleone/staffed/compare/v1.1.0...v1.2.0) (2026-07-26)
 
 
