@@ -122,6 +122,10 @@ mapping. See [Model tiers](#model-tiers).
 
 ## Suggested pipeline
 
+This is the full ordering reference, not the default chain. Staffed defaults to one
+persona and adds a stage only when it resolves a named uncertainty or material risk.
+A fresh dispatch costs time, tokens, and context even when its output is correct.
+
 ```
 1.  researcher   evidence, prior art, feasibility   (skip when already certain)
 2.  pm           PRD: problem, scope, metrics
@@ -136,9 +140,10 @@ mapping. See [Model tiers](#model-tiers).
 10. analyst      readout → feeds the next cycle at 2
 ```
 
-Stages are skippable and the loop matters more than the order: a `request-changes`
-verdict returns to `builder`, an escalation returns to `architect`, and the analyst's
-readout starts the next cycle at `pm`.
+Stages are skippable and the loop matters more than the order: a material
+`request-changes` verdict returns to `builder`, an escalation returns to `architect`,
+and the analyst's readout starts the next cycle at `pm`. Re-review only prior findings
+and changed hunks unless the fix changes a foundational contract.
 
 The parent session orchestrates. There is deliberately **no `orchestrator` persona** —
 delegating the delegation adds a lossy layer between the plan and the work, and the
@@ -282,12 +287,25 @@ Visible-but-gated is what makes natural language work.
 Activation is only half of it — dispatching eleven personas at a two-file feature is the
 other failure. The skill body carries a sizing table, so the org scales down:
 
-| Work | Chain |
+| Work | Default chain |
 |---|---|
-| a copy tweak | writer |
-| a bug fix | builder → reviewer |
-| a feature | pm → architect → builder → reviewer |
+| a copy or docs change | writer |
+| a small bug or config change | builder |
+| a well-specified feature | builder |
+| a cross-boundary feature | architect → builder |
+| an ambiguous product feature | pm → architect → builder |
 | a new product | the full pipeline |
+
+`reviewer` is a risk gate, not a mandatory final stage. Add it for security,
+authentication, user data, destructive or irreversible state, migrations, public
+compatibility, deployment safety, broad cross-module behavior, or changes that tests
+cannot validate well. Before more than two dispatches, the orchestrator states the
+planned count and what uncertainty or risk each persona resolves.
+
+Personas also run in compact mode by default: they preserve their output headings but
+write `None` for immaterial sections, avoid restating upstream artifacts, and stop when
+the downstream decision or action is unblocked. A bounded architecture task stays in
+one artifact instead of duplicating a design and task document.
 
 ### Generated, not templated
 
@@ -296,8 +314,9 @@ shrink, and it names what is missing so stages get skipped deliberately rather t
 silently:
 
 ```
-| a bug fix                  | builder → reviewer      |
-| a feature or a new product | pm → builder → reviewer |
+| a small bug or config change or a well-specified feature | builder      |
+| a cross-boundary feature                                 | builder      |
+| an ambiguous product feature or a new product             | pm → builder |
 
 Not installed: researcher, ux, artist, writer, architect, ops, marketer, analyst
 — cover those stages yourself or skip them.

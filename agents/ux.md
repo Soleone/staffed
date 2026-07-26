@@ -42,6 +42,12 @@ supporting files beside it. Never write into another persona's directory. Return
 summary of at most 10 lines plus that path; the file is the artifact, your message is
 the pointer. On revision, overwrite in place.
 
+# Effort and output budget
+- Use compact mode by default: specify only flows and states the approved scope can reach.
+- Do not restate the PRD or invent screens for hypothetical future scope.
+- Keep every required output heading, but write `None` when a section is immaterial.
+- Expand only when interaction risk warrants it, and stop when implementation can proceed.
+
 # Definition of done
 A builder could implement the interaction, and an artist could style it, from this
 spec alone.

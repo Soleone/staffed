@@ -43,9 +43,11 @@ function chain(stages) {
 
 /** Size the pipeline to the work. Only rows whose personas are enabled are shown. */
 const SIZING = [
-  { work: "a copy tweak", chain: ["writer"] },
-  { work: "a bug fix", chain: ["builder", "reviewer"] },
-  { work: "a feature", chain: ["pm", "architect", "builder", "reviewer"] },
+  { work: "a copy or docs change", chain: ["writer"] },
+  { work: "a small bug or config change", chain: ["builder"] },
+  { work: "a well-specified feature", chain: ["builder"] },
+  { work: "a cross-boundary feature", chain: ["architect", "builder"] },
+  { work: "an ambiguous product feature", chain: ["pm", "architect", "builder"] },
   { work: "a new product", chain: null },
 ];
 
@@ -87,16 +89,17 @@ export function generate(enabled, personas = []) {
     "# Staffed",
     "",
     wrap(
-      "You are the orchestrator, not a worker. Decompose the goal, dispatch personas with the " +
-        "`subagent` tool, validate each one's output contract, and loop back on failures. Do not " +
-        "do a persona's job yourself — that is the whole point of having them.",
+      "You are the orchestrator, not a worker. Decompose the goal, dispatch the smallest sufficient " +
+        "set of personas with the `subagent` tool, validate their output contracts, and loop back " +
+        "only when a material failure requires it. One persona is a valid staffed pipeline.",
     ),
     "",
     "## Size the pipeline to the work",
     "",
     wrap(
-      "Every stage must earn its place. Dispatching costs a round trip, so run the shortest chain " +
-        "that covers the actual risk, and do trivial subtasks inline rather than delegating them.",
+      "Default to one actor. Every additional stage must resolve a named uncertainty or material " +
+        "risk that the current actor cannot own. Dispatching adds latency, cost, and a fresh context, " +
+        "so never add a persona merely because the work can be called a feature.",
     ),
     "",
     "| Work | Chain |",
@@ -104,8 +107,30 @@ export function generate(enabled, personas = []) {
     ...rows,
     "",
     wrap(
-      "Skipping stages is normal. Reach for the full pipeline when the work is genuinely new and " +
-        "uncertain, not because the personas exist.",
+      "Skipping stages is normal. Reach for the full pipeline only when the product is genuinely " +
+        "new and uncertain. Before launching more than two personas, state the planned dispatch " +
+        "count and the specific risk or unknown each one resolves; shrink the plan if that case is weak.",
+    ),
+    "",
+    "## Risk gates",
+    "",
+    wrap(
+      "Do not add `reviewer` automatically. Add it when the change touches security, authentication, " +
+        "user data, destructive or irreversible state, migrations, public compatibility, deployment " +
+        "safety, broad cross-module behavior, or cannot be validated well by tests. Add `architect` " +
+        "only for a shared interface, multiple subsystem boundaries, or multiple independent build " +
+        "tasks. Add `pm` only when what or why remains unresolved; add `researcher` only when an " +
+        "external fact or feasibility question blocks that decision.",
+    ),
+    "",
+    "## Compact by default",
+    "",
+    wrap(
+      "Ask every persona for the shortest artifact that lets the next decision or action succeed. " +
+        "It must not restate upstream context, fill sections with speculative possibilities, or keep " +
+        "investigating after its definition of done is met. Expand only when complexity, evidence, or " +
+        "risk requires it. For a bounded task, prefer one compact artifact over a design document plus " +
+        "a duplicate task document.",
     ),
     "",
     "## The roster",
@@ -129,32 +154,50 @@ export function generate(enabled, personas = []) {
     );
   }
 
+  const artifactExceptions = [
+    has("builder") ? "`builder`'s artifact is the code itself" : "",
+    has("reviewer") ? "`reviewer` writes nothing" : "",
+  ].filter(Boolean);
   body.push(
     "",
     "## Passing work between personas",
     "",
     wrap(
-      "Each persona writes its output to `artifacts/<agent>/index.md` and returns that path. Pass " +
-        "paths downstream, never the full document — that is what keeps your context flat across a " +
-        "long pipeline. `builder`'s artifact is the code itself and `reviewer` writes nothing, so " +
-        "neither owns a directory.",
+      "Each artifact-owning persona writes to `artifacts/<agent>/index.md` and returns that path. " +
+        "Pass paths downstream, never the full document — that keeps context flat across a long " +
+        "pipeline." +
+        (artifactExceptions.length ? ` Exceptions: ${artifactExceptions.join("; ")}.` : ""),
     ),
-    "",
-    "## Loops",
-    "",
-    "- A `request-changes` verdict goes back to `builder`, not to you. Do not patch it yourself.",
-    "- A cross-boundary escalation from `builder` goes back to `architect` for a decision.",
-    "- An `analyst` readout starts the next cycle at `pm`.",
-    "",
-    "## Parallelism",
-    "",
-    wrap(
-      "Fan out `builder`s with `worktree: true` (add `worktreeSetup: \"node-modules\"` when the tree " +
-        "needs deps); the architect marks which tasks are parallel-safe. Parallel `reviewer`s in one " +
-        "checkout need `allowParallelWrites: true` — they are fenced by contract, not by capability.",
-    ),
-    "",
   );
+
+  const loops = [];
+  if (has("reviewer") && has("builder")) {
+    loops.push(
+      "- A material `request-changes` verdict goes back to `builder`; keep revision scope to the findings.",
+      "- Re-review only the prior findings and changed hunks unless a fix alters a foundational contract.",
+      "- Do not launch a second reviewer for low-risk nits or changes already proven by focused validation.",
+    );
+  }
+  if (has("builder") && has("architect")) {
+    loops.push("- A cross-boundary escalation from `builder` goes back to `architect` for a decision.");
+  }
+  if (has("analyst") && has("pm")) loops.push("- An `analyst` readout starts the next cycle at `pm`.");
+  if (loops.length) body.push("", "## Loops", "", ...loops);
+
+  const parallel = [];
+  if (has("builder")) {
+    parallel.push(
+      "Fan out `builder`s only for independent tasks and use `worktree: true` (plus " +
+        "`worktreeSetup: \"node-modules\"` when needed).",
+    );
+  }
+  if (has("reviewer")) {
+    parallel.push(
+      "Parallel `reviewer`s in one checkout need `allowParallelWrites: true`; they are fenced by contract.",
+    );
+  }
+  if (parallel.length) body.push("", "## Parallelism", "", wrap(parallel.join(" ")));
+  body.push("");
 
   return body.join("\n");
 }

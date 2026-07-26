@@ -95,6 +95,7 @@ export function validate(personas, stages) {
     if (p.meta.tools) at("declares a tools allowlist (containment here is prompt-level)");
     if (p.meta.model) at("has a pinned model — pinning belongs at install time, not in source");
     if (!/^# Output \(always, in this structure\)/m.test(p.body)) at("no output contract");
+    if (!/^# Effort and output budget/m.test(p.body)) at("no effort and output budget");
     if (!NO_ARTIFACT.has(p.name) && !/^# Artifact/m.test(p.body)) at("no # Artifact section");
 
     if (!NO_DIRECTORY.has(p.name) && !p.body.includes(`artifacts/${p.name}/`)) {

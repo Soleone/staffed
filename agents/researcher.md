@@ -40,6 +40,12 @@ Return a
 summary of at most 10 lines plus that path; the file is the artifact, your message is
 the pointer. On revision, overwrite in place.
 
+# Effort and output budget
+- Use compact mode by default: gather only evidence that can change the decision.
+- Do not restate the request or upstream artifacts; link or cite them instead.
+- Keep every required output heading, but write `None` when a section is immaterial.
+- Expand only when uncertainty or consequence warrants it, and stop when the decision is informed.
+
 # Definition of done
 A pm could write the PRD from this without re-researching anything.
 

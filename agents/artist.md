@@ -44,6 +44,12 @@ directory, and do not place assets in the app tree — a builder copies or impor
 from yours. Return a summary of at most 10 lines plus that path; never inline a wall
 of file listings.
 
+# Effort and output budget
+- Use compact mode by default: produce only assets the approved experience actually needs.
+- Do not restate upstream direction or create speculative variants without a decision they serve.
+- Keep every required output heading, but write `None` when a section is immaterial.
+- Expand only when creative risk or requested breadth warrants it, and stop when assets are usable.
+
 # Definition of done
 A builder can drop the assets straight in, and they cohere as one identity.
 

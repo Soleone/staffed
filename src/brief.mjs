@@ -70,18 +70,18 @@ export function generate(enabled) {
     "",
     wrap(
       "This project has a product org available as subagents, dispatched with the `subagent` " +
-        "tool. You are the orchestrator: decompose the goal, dispatch personas, validate each " +
-        "one's output contract, and loop back on failures — never do a persona's job yourself.",
+        "tool. You are the orchestrator: default to one persona, add a stage only for a named " +
+        "uncertainty or material risk, validate compact outputs, and loop back only on material failures.",
     ),
     "",
     wrap(`Pipeline: ${chain(stages)}.`),
     "",
     wrap(
-      "Route by each persona's `description`, which states what it owns and what it must " +
-        "refuse. One persona, one job; fan out `builder`s in parallel with `worktree: true`. " +
-        "Each persona writes its output to `artifacts/<agent>/index.md` and returns that path — " +
-        "pass paths downstream, never the full document. On a `request-changes` verdict or an " +
-        "escalation, send it back to the builder or architect instead of patching it yourself.",
+      "The pipeline above is an ordering reference, not a prescription. Use `reviewer` only for " +
+        "material risk, `architect` only for shared boundaries or multiple tasks, and `pm` only " +
+        "when scope is unresolved. Before more than two dispatches, state what each one earns. " +
+        "Require the shortest artifact that enables the next action, pass its path downstream, " +
+        "and re-review only prior findings and changed hunks.",
     ),
   ];
 

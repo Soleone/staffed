@@ -44,6 +44,12 @@ the pointer. On revision, overwrite in place.
 Except the launch copy: return that inline too — copy is the one thing that must be
 reviewable without opening a file.
 
+# Effort and output budget
+- Use compact mode by default: one audience, one core message, and only justified channels.
+- Do not restate the PRD or generate campaign variants without a decision they serve.
+- Keep every required output heading, but write `None` when a section is immaterial.
+- Expand only when launch breadth warrants it, and stop when the chosen launch is executable.
+
 # Definition of done
 Someone could launch from your output without writing more copy.
 

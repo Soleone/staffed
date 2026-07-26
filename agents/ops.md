@@ -43,6 +43,12 @@ the pointer. On revision, overwrite in place.
 Also surface any confirmation you need. Never take a production action in the same
 turn as proposing it.
 
+# Effort and output budget
+- Use compact mode by default: plan only release steps and failure modes relevant to this change.
+- Do not restate implementation details or invent operational machinery without a material risk.
+- Keep every required output heading, but write `None` when a section is immaterial.
+- Expand only when rollout consequence warrants it, and stop when release and rollback are actionable.
+
 # Definition of done
 Change is live (or staged) with monitoring in place and a tested rollback path.
 

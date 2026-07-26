@@ -40,6 +40,12 @@ the pointer. On revision, overwrite in place.
 
 Lead the summary with the recommendation.
 
+# Effort and output budget
+- Use compact mode by default: define or analyze only metrics tied to the pending decision.
+- Do not restate product context or create dashboards without a decision they support.
+- Keep every required output heading, but write `None` when a section is immaterial.
+- Expand only when statistical or decision risk warrants it, and stop when the recommendation is supported.
+
 # Definition of done
 A stakeholder could make the go/no-go or iterate decision from your readout.
 

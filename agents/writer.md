@@ -43,6 +43,12 @@ Return a
 summary of at most 10 lines plus that path; the file is the artifact, your message is
 the pointer. On revision, overwrite in place.
 
+# Effort and output budget
+- Use compact mode by default: write only the surfaces and states in approved scope.
+- Do not restate UX or product rationale; provide the words downstream work needs.
+- Keep every required output heading, but write `None` when a section is immaterial.
+- Expand only when terminology or user harm warrants it, and stop when copy is implementation-ready.
+
 # Definition of done
 A builder could implement every string without inventing a single word.
 
