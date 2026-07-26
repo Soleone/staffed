@@ -9,7 +9,7 @@ import {
   setTier,
   validateModelConfig,
 } from "./models.mjs";
-import { DEFAULT_HOST, HOSTS, resolveHost } from "./hosts.mjs";
+import { HOSTS, resolveHost, selectDefaultAgent } from "./hosts.mjs";
 import * as placement from "./install.mjs";
 import { STAGES, generateBrief } from "./brief.mjs";
 import { generateSkill } from "./skill.mjs";
@@ -25,7 +25,7 @@ roster
   staffed status                 what is enabled, and whether it drifted
   staffed list                   the roster with default model tier and effort
 
-discovery (agents are invisible to a host session; something must point at them)
+discovery (agents are invisible to an agent session; something must point at them)
   staffed skill                  print the Staffed skill — installed by default
   staffed brief                  print the optional AGENTS.md block
   staffed brief --write          also put it in AGENTS.md
@@ -38,7 +38,7 @@ tiers
   staffed doctor                             check models against this install
 
 options
-  --host <name>     ${Object.keys(HOSTS).join(" | ")}  (default: ${DEFAULT_HOST})
+  --agent <name>    ${Object.keys(HOSTS).join(" | ")}  (auto when omitted)
   --scope <s>       user | project               (default: user)
   --profile <p>     model profile to stamp, or "none" (default: none)
   --model <m>       with \`tier\`: the model for that tier
@@ -51,11 +51,19 @@ options
   --dry-run, -n     print what would happen
   -h, --help        this
 
+agent selection
+  Agent-dependent commands probe ~/.pi/agent and ~/.claude when --agent is omitted.
+  Exactly one installed agent is selected automatically. If both are installed, pass
+  --agent pi or --agent claude. If neither is installed, a warning is printed and Pi
+  is used as the fallback. Agent-independent commands (help, list, tier/models, validate)
+  skip detection.
+
 In pi a persona is enabled purely by being present in an agents directory, so
 enable/disable place and remove files. Sources are never mutated: a model profile is
 applied while rendering, leaving the repo portable with no unpin step to forget.
 Plain enable inherits the parent model; a profile pins render-time defaults which a
-call-site model can override. For durable tier edits, use a clone or persistent install.`;
+call-site model can override. Agent selection and model profile are independent. For
+durable tier edits, use a clone or persistent install.`;
 
 const LABEL = {
   enabled: "enabled",
@@ -78,11 +86,17 @@ function parse(argv) {
   const rest = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === "--host") opts.host = argv[++i];
-    else if (a === "--scope") opts.scope = argv[++i];
-    else if (a === "--profile") opts.profile = argv[++i];
-    else if (a === "--model") opts.model = argv[++i];
-    else if (a === "--thinking") opts.thinking = argv[++i];
+    const value = (option) => {
+      const next = argv[i + 1];
+      if (next === undefined || next.startsWith("-")) throw new Error(`${option} requires a value`);
+      i++;
+      return next;
+    };
+    if (a === "--agent") opts.agent = value("--agent");
+    else if (a === "--scope") opts.scope = value("--scope");
+    else if (a === "--profile") opts.profile = value("--profile");
+    else if (a === "--model") opts.model = value("--model");
+    else if (a === "--thinking") opts.thinking = value("--thinking");
     else if (a === "--brief") opts.brief = true;
     else if (a === "--no-brief") opts.brief = false;
     else if (a === "--no-skill") opts.skill = false;
@@ -166,8 +180,8 @@ export function printTiers(profileArg, cfg = loadConfig()) {
 }
 
 /** Compare configured models against what this pi install actually offers. */
-async function doctor(hostName = DEFAULT_HOST) {
-  if (hostName === "claude-code") {
+async function doctor(agentName) {
+  if (agentName === "claude") {
     console.error("doctor can inspect the Pi registry only; Claude alias entitlement cannot be verified here.");
     return 1;
   }
@@ -213,7 +227,7 @@ async function doctor(hostName = DEFAULT_HOST) {
 }
 
 function printStatus(s) {
-  console.log(`host    ${s.host.label} (${s.host.key})`);
+  console.log(`agent   ${s.host.label} (${s.host.key})`);
   console.log(`scope   ${s.scope}`);
   console.log(`dir     ${s.dir}`);
   console.log(
@@ -253,7 +267,7 @@ function printStatus(s) {
     }[item.state] ?? item.state;
     console.log(`${label.padEnd(8)} ${text}\n         ${item.file ?? item.path}`);
   };
-  line("skill", s.skill, enabled.length ? "MISSING — nothing tells the host these personas exist" : "absent");
+  line("skill", s.skill, enabled.length ? "MISSING — nothing tells the agent these personas exist" : "absent");
   if (s.brief.state !== "absent") line("brief", s.brief, "absent");
   if (s.collisions?.length) console.log(`collisions ${s.collisions.map((c) => `${c.name}: ${c.path}`).join(", ")}`);
 }
@@ -269,10 +283,38 @@ const modelOf = (i) => {
   return `${i.tracked.tier} → ${value} (${i.tracked.profile ?? "unknown"})`;
 };
 
+const DEPENDENT_COMMANDS = new Set([
+  "doctor", "skill", "brief", "status", "enable", "install", "disable", "uninstall",
+]);
+
+function assertKnownAgent(name) {
+  if (name !== undefined && !Object.hasOwn(HOSTS, name)) {
+    throw new Error(`unknown agent "${name}". known: ${Object.keys(HOSTS).join(", ")}`);
+  }
+}
+
+function selectAgent(opts) {
+  if (opts.agent !== undefined) return resolveHost(opts.agent);
+  const selected = selectDefaultAgent();
+  if (selected.reason === "legacy-default") {
+    console.error(
+      "warning: no Pi or Claude Code configuration directory detected; defaulting to agent pi " +
+        "(use --agent claude to choose Claude Code)",
+    );
+  }
+  return resolveHost(selected.key);
+}
+
+function placementOptions(opts, host) {
+  const { agent: _agent, ...rest } = opts;
+  return { ...rest, host: host.key };
+}
+
 export async function main(argv = process.argv.slice(2)) {
   const { opts, rest } = parse(argv);
   const cmd = rest[0] ?? "help";
   const names = rest.slice(1);
+  assertKnownAgent(opts.agent);
 
   if (opts.help || cmd === "help") {
     console.log(HELP);
@@ -311,38 +353,6 @@ export async function main(argv = process.argv.slice(2)) {
     return 0;
   }
 
-  if (cmd === "doctor") return doctor(opts.host);
-
-  if (cmd === "skill") {
-    const host = resolveHost(opts.host);
-    const enabled = enabledNames(opts);
-    if (!enabled.length) {
-      console.error(`nothing is enabled for host ${host.label} (${opts.scope} scope).`);
-      return 1;
-    }
-    console.log(`# would go in ${host.skillDir(opts.scope, process.cwd())}/staffed/SKILL.md\n`);
-    console.log(generateSkill({ hostKey: host.key, enabled, personas: loadPersonas() }));
-    return 0;
-  }
-
-  if (cmd === "brief") {
-    const host = resolveHost(opts.host);
-    const file = host.briefFile(opts.scope, process.cwd());
-    const enabled = enabledNames(opts);
-    if (!enabled.length && !opts.remove) {
-      console.error(`nothing is enabled for host ${host.label} (${opts.scope} scope), so there is no brief to write.`);
-      return 1;
-    }
-    if (opts.remove || opts.write) {
-      const r = placement.setBrief({ ...opts, action: opts.remove ? "remove" : "write" });
-      console.log(`${r.action}: ${r.file}`);
-      return 0;
-    }
-    console.log(`# would go in ${file}\n`);
-    console.log(generateBrief({ hostKey: host.key, enabled }));
-    return 0;
-  }
-
   if (cmd === "validate") {
     const personas = loadPersonas();
     const problems = [...validate(personas, STAGES), ...validateModelConfig(loadConfig())];
@@ -356,8 +366,47 @@ export async function main(argv = process.argv.slice(2)) {
     return 1;
   }
 
+  if (!DEPENDENT_COMMANDS.has(cmd)) {
+    console.error(`unknown command "${cmd}"\n${HELP}`);
+    return 2;
+  }
+
+  const host = selectAgent(opts);
+  const agentOpts = placementOptions(opts, host);
+
+  if (cmd === "doctor") return doctor(host.key);
+
+  if (cmd === "skill") {
+    const enabled = enabledNames(agentOpts);
+    if (!enabled.length) {
+      console.error(`nothing is enabled for agent ${host.label} (${opts.scope} scope).`);
+      return 1;
+    }
+    console.log(`# would go in ${host.skillDir(opts.scope, process.cwd())}/staffed/SKILL.md\n`);
+    console.log(generateSkill({ hostKey: host.key, enabled, personas: loadPersonas() }));
+    return 0;
+  }
+
+  if (cmd === "brief") {
+    const file = host.briefFile(opts.scope, process.cwd());
+    const enabled = enabledNames(agentOpts);
+    if (!enabled.length && !opts.remove) {
+      console.error(`nothing is enabled for agent ${host.label} (${opts.scope} scope), so there is no brief to write.`);
+      return 1;
+    }
+    if (opts.remove || opts.write) {
+      const r = placement.setBrief({ ...agentOpts, action: opts.remove ? "remove" : "write" });
+      console.log(`${r.action}: ${r.file}`);
+      return 0;
+    }
+    console.log(`# would go in ${file}\n`);
+    console.log(generateBrief({ hostKey: host.key, enabled }));
+    return 0;
+  }
+
+
   if (cmd === "status") {
-    printStatus(placement.status(opts));
+    printStatus(placement.status(agentOpts));
     return 0;
   }
 
@@ -368,11 +417,11 @@ export async function main(argv = process.argv.slice(2)) {
       for (const p of problems) console.error(`  - ${p}`);
       return 1;
     }
-    const r = placement.enable({ ...opts, only: names });
+    const r = placement.enable({ ...agentOpts, only: names });
     const verb = r.dryRun ? "would enable" : r.mode === "link" ? "linked" : "enabled";
     console.log(`${verb} ${r.items.length}${names.length ? "" : " (all)"} -> ${r.dir}`);
     console.log(
-      `host ${r.host.label}, scope ${r.scope}, profile ${r.profile.key}, mode ${r.mode}` +
+      `agent ${r.host.label}, scope ${r.scope}, profile ${r.profile.key}, mode ${r.mode}` +
         (r.enabledTotal ? `, ${r.enabledTotal} enabled in total` : ""),
     );
     if (r.dryRun) for (const i of r.items) console.log(`  ${i.file}  (${LABEL[i.state] ?? i.state})`);
@@ -388,7 +437,7 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   if (cmd === "disable" || cmd === "uninstall") {
-    const r = placement.disable({ ...opts, only: names });
+    const r = placement.disable({ ...agentOpts, only: names });
     console.log(`disabled ${r.removed.length}${r.removed.length ? `: ${r.removed.join(", ")}` : ""}`);
     console.log(`${r.remaining} still enabled in ${r.dir}`);
 
@@ -398,6 +447,5 @@ export async function main(argv = process.argv.slice(2)) {
     return 0;
   }
 
-  console.error(`unknown command "${cmd}"\n${HELP}`);
-  return 2;
+  throw new Error(`unhandled command "${cmd}"`);
 }

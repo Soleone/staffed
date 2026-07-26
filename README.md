@@ -84,8 +84,21 @@ overwriting it. `--force` when that is what you actually want.
 | `doctor` | check configured model ids against this pi install |
 | `validate` | structural checks on the roster |
 
-Options: `--host` `--scope user|project` `--profile` `--model` `--thinking` `--link`
-`--force` `--dry-run` `--brief` `--no-skill`.
+Options: `--agent pi|claude|opencode` `--scope user|project` `--profile` `--model`
+`--thinking` `--link` `--force` `--dry-run` `--brief` `--no-skill`.
+
+Agent selection is automatic when `--agent` is omitted. Staffed checks only the canonical
+home configuration directories: `~/.pi/agent` and `~/.claude`. If exactly one exists,
+it selects that agent. If both exist, pass `--agent pi` or `--agent claude`; Staffed
+will not guess. If neither exists, agent-dependent commands visibly warn and fall back
+to Pi, preserving fresh-install behavior. `help`, `list`, `tier`/`models`, and
+`validate` do not inspect the home directory.
+
+`--agent` chooses rendering and filesystem destinations. `--profile` independently
+chooses model frontmatter; neither option infers the other. For example,
+`--agent pi --profile claude` writes Pi files stamped with Claude-family aliases,
+while `--agent claude` alone uses profile `none` and does not pin a model. Claude Code
+and opencode remain behind their current support gates.
 
 `enable` and `disable` keep the skill in sync automatically. `--brief` additionally
 writes an `AGENTS.md` block; `--no-skill` installs nothing but the personas.
@@ -195,7 +208,7 @@ subagent file format while giving both scripts and humans something to reason ab
 `balanced` — request `strong` or `deep` when the decision hinges on synthesis.
 ```
 
-`models.json` maps tiers to concrete models, per host profile:
+`models.json` maps tiers to concrete models, per model profile:
 
 ```bash
 pnpm dlx staffed tier                           # show the mapping

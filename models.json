@@ -34,7 +34,7 @@
         "thinking": "low"
       }
     },
-    "claude-code": {
+    "claude": {
       "deep": {
         "model": "opus"
       },

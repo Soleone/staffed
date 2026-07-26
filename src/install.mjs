@@ -62,7 +62,7 @@ function validateProfile(host, profile) {
   if (host.allowedProfiles && !host.allowedProfiles.includes(profile.key)) {
     throw new Error(`profile "${profile.key}" is not valid for ${host.label}; use ${host.allowedProfiles.join(", ")}`);
   }
-  if (host.key === "claude-code" && profile.map) {
+  if (host.key === "claude" && profile.map) {
     for (const value of Object.values(profile.map)) {
       if (value.thinking || !["inherit", "haiku", "sonnet", "opus"].includes(value.model)) {
         throw new Error(`profile "${profile.key}" contains a model Claude Code cannot safely render`);
@@ -88,7 +88,7 @@ function declaredName(path) {
 }
 
 function collisions(host, dir, items) {
-  if (host.key !== "claude-code") return [];
+  if (host.key !== "claude") return [];
   const targets = new Set(items.map((i) => i.path));
   const names = new Set(items.map((i) => i.persona.name));
   return recursiveMarkdown(dir).flatMap((path) => {
@@ -105,7 +105,7 @@ export function plan({ host: hostName, scope = "user", profile = "none", mode = 
   const personas = loadPersonas();
   const { manifest, manifestError } = loadManifest(dir, { hostKey: host.key, scope });
   if (mode === "link" && prof.map) throw new Error("--link cannot be combined with a model profile: a rendered file is not a link to the source.");
-  if (mode === "link" && host.key === "claude-code") throw new Error("--link is unavailable for Claude Code because its explicit-only description must be rendered.");
+  if (mode === "link" && host.key === "claude") throw new Error("--link is unavailable for Claude Code because its explicit-only description must be rendered.");
   if (mode === "link" && isEphemeral(ROOT)) throw new Error(`--link refused: this package lives in an ephemeral directory (${ROOT}).\nLinks would break as soon as the cache is cleared. Use the default copy mode, or clone the repo and link from there.`);
   const items = select(personas, only).map((persona) => {
     const file = host.filename(persona), path = join(dir, file), tier = tierFor(persona, prof);

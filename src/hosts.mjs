@@ -3,6 +3,7 @@
 // Adding a host means adding one entry. The bodies need no translation — they
 // deliberately contain nothing host-specific (no `subagent`, no `worktree`, no `.pi/`).
 
+import { statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -54,12 +55,12 @@ export const HOSTS = {
     ],
   },
 
-  "claude-code": {
+  claude: {
     label: "Claude Code",
     // Implementation is retained behind the host gate until an authenticated
     // real-Claude activation/non-activation attestation is recorded.
     supported: false,
-    allowedProfiles: ["none", "inherit", "claude-code"],
+    allowedProfiles: ["none", "inherit", "claude"],
     userDir: () => join(homedir(), ".claude", "agents"),
     projectDir: (cwd) => join(cwd, ".claude", "agents"),
     briefFile: (scope, cwd) => (scope === "project" ? join(cwd, "CLAUDE.md") : join(homedir(), ".claude", "CLAUDE.md")),
@@ -77,7 +78,7 @@ export const HOSTS = {
         p.body,
       ),
     notes: [
-      "Model names differ (opus/sonnet/haiku) — use the claude-code profile.",
+      "Model names differ (opus/sonnet/haiku) — use the claude profile.",
       "Has no per-agent thinking level, so the thinking half of a tier is dropped.",
     ],
   },
@@ -97,14 +98,35 @@ export const HOSTS = {
 
 export const DEFAULT_HOST = "pi";
 
+function isDirectory(path) {
+  try {
+    return statSync(path).isDirectory();
+  } catch (error) {
+    if (["ENOENT", "ENOTDIR"].includes(error?.code)) return false;
+    throw error;
+  }
+}
+
+export function selectDefaultAgent({ home = homedir() } = {}) {
+  const detected = [];
+  if (isDirectory(join(home, ".pi", "agent"))) detected.push("pi");
+  if (isDirectory(join(home, ".claude"))) detected.push("claude");
+  if (detected.length === 2) {
+    throw new Error("both Pi and Claude Code were detected; pass --agent pi or --agent claude");
+  }
+  return detected.length
+    ? { key: detected[0], detected, reason: "detected" }
+    : { key: DEFAULT_HOST, detected, reason: "legacy-default" };
+}
+
 export function resolveHost(name = DEFAULT_HOST) {
   const host = HOSTS[name];
   if (!host) {
-    throw new Error(`unknown host "${name}". known: ${Object.keys(HOSTS).join(", ")}`);
+    throw new Error(`unknown agent "${name}". known: ${Object.keys(HOSTS).join(", ")}`);
   }
   if (!host.supported) {
     throw new Error(
-      `host "${name}" is not supported yet (target: ${host.userDir()}).\n` +
+      `agent "${name}" is not supported yet (target: ${host.userDir()}).\n` +
         `The rendering seam exists — implement and verify it, then flip supported: true in src/hosts.mjs.`,
     );
   }

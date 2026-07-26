@@ -52,7 +52,7 @@ const SIZING = [
 
 /** Generate SKILL.md for a specific set of enabled personas. */
 export function generateSkill({ hostKey = "pi", enabled, personas = [] }) {
-  const claude = hostKey === "claude-code";
+  const claude = hostKey === "claude";
   const set = new Set(enabled);
   const stages = STAGES.filter((s) => set.has(s.name));
   const partial = stages.length < STAGES.length;

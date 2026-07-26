@@ -33,6 +33,16 @@ test("openai profile resolves the approved four mappings", () => {
   });
 });
 
+test("claude profile resolves exact aliases and the former identifier is unknown", () => {
+  assert.deepEqual(resolveProfile("claude").map, {
+    fast: { model: "haiku", thinking: null },
+    balanced: { model: "sonnet", thinking: null },
+    strong: { model: "sonnet", thinking: null },
+    deep: { model: "opus", thinking: null },
+  });
+  assert.throws(() => resolveProfile(["claude", "code"].join("-")), /unknown profile/);
+});
+
 test("legacy three-tier profile clones balanced into strong without mutation", () => {
   const cfg = {
     profile: "old",

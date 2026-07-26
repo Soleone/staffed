@@ -40,7 +40,7 @@ export function generateBrief({ hostKey = "pi", enabled }) {
   const set = new Set(enabled);
   const stages = STAGES.filter((s) => set.has(s.name));
   const partial = stages.length < STAGES.length;
-  const claude = hostKey === "claude-code";
+  const claude = hostKey === "claude";
   const actor = claude ? "Agent" : "subagent";
   const activation = claude
     ? 'Use Staffed only after /staffed, "use Staffed", or "staff this project"; never use it for ordinary prompts. '
