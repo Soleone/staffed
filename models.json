@@ -1,0 +1,54 @@
+{
+  "//": [
+    "Tier -> { model, thinking } map. THIS IS THE ONLY FILE TO EDIT WHEN MODELS CHANGE.",
+    "Each persona declares a tier (fast|balanced|deep) in its own file; this maps tiers",
+    "to concrete models for one host, so it stays correct as the roster grows.",
+    "",
+    "'model:thinking' shorthand is accepted and normalized. Thinking is stored apart",
+    "from the model because hosts spell it differently: pi appends ':level', while",
+    "Claude Code has no per-agent equivalent and drops it.",
+    "",
+    "Edit via: agent-company tier deep --model X --thinking xhigh",
+    "'unverified' lists tiers seeded by guesswork; declaring one clears its entry.",
+    "Check your own install with: agent-company doctor"
+  ],
+  "profile": "pi",
+  "profiles": {
+    "pi": {
+      "deep": {
+        "model": "claude-opus-5",
+        "thinking": "xhigh"
+      },
+      "balanced": {
+        "model": "claude-sonnet-4-6",
+        "thinking": "medium"
+      },
+      "fast": {
+        "model": "claude-sonnet-4-5",
+        "thinking": "low"
+      }
+    },
+    "claude-code": {
+      "deep": {
+        "model": "opus"
+      },
+      "balanced": {
+        "model": "sonnet"
+      },
+      "fast": {
+        "model": "haiku"
+      }
+    },
+    "inherit": {
+      "deep": {
+        "model": "inherit"
+      },
+      "balanced": {
+        "model": "inherit"
+      },
+      "fast": {
+        "model": "inherit"
+      }
+    }
+  }
+}

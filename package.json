@@ -1,0 +1,37 @@
+{
+  "name": "agent-company",
+  "version": "0.3.0",
+  "description": "Eleven subagent personas covering a digital product end to end - research, product definition, UX, copy, design, architecture, implementation, review, release, launch, measurement. No runtime, no dependencies: plain markdown plus a small installer.",
+  "keywords": [
+    "pi-agents",
+    "subagent",
+    "agent-orchestration",
+    "product-development",
+    "design",
+    "research",
+    "marketing"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "validate": "node bin/agent-company.mjs validate",
+    "list": "node bin/agent-company.mjs list",
+    "tier": "node bin/agent-company.mjs tier",
+    "doctor": "node bin/agent-company.mjs doctor",
+    "enable": "node bin/agent-company.mjs enable",
+    "status": "node bin/agent-company.mjs status"
+  },
+  "type": "module",
+  "bin": {
+    "agent-company": "./bin/agent-company.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "agents",
+    "src",
+    "bin",
+    "models.json",
+    "README.md"
+  ]
+}
