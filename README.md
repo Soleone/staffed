@@ -437,11 +437,13 @@ a model, `name` + `description` is the common subset across pi, Claude Code and
 opencode, and the bodies contain nothing host-specific. There is usually nothing to
 translate. The only deltas that exist:
 
-- **Claude Code** (`~/.claude/agents/`): model vocabulary only (`opus`/`sonnet`/`haiku`)
-  — use the `claude-code` profile.
+- **Claude Code** (`~/.claude/agents/`): implementation is prepared with gated agent
+  descriptions and host-specific discovery text, but remains disabled pending authenticated
+  real-host activation and non-activation attestation.
 - **opencode** (`~/.config/opencode/agent/`): adds `mode: subagent`. One line, for the
   whole roster.
 
-Both are stubbed in `src/hosts.mjs` with `supported: false`, so requesting one fails
-with an explanation rather than writing files nobody has verified. Add a host there, a
-profile in `models.json`, then `staffed enable --host <name>`.
+Claude Code and OpenCode remain gated in `src/hosts.mjs` with `supported: false`, so
+requesting either fails rather than writing unverified files. See
+[the Claude Code compatibility runbook](docs/claude-code-compatibility.md) for the
+real-host release gate.

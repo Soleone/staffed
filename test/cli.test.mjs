@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -117,6 +117,26 @@ test("doctor recognizes provider-qualified user registry aliases", () => {
     writeFileSync(registry, JSON.stringify({ providers: { "openai-codex": { models: [{ id: "gpt-5.6-sol" }] } } }));
     const output = run(["doctor"], { env: { HOME: home, PI_PROVIDER: "", PI_MODEL: "" } });
     assert.match(output, /strong\s+openai-codex\/gpt-5\.6-sol:medium\s+ok/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("user-scope lifecycle supports partial disable and clean discovery removal", () => {
+  const home = mkdtempSync(join(tmpdir(), "staffed-user-life-"));
+  try {
+    run(["enable", "builder", "pm"], { env: { HOME: home } });
+    const dir = join(home, ".pi", "agent");
+    assert.match(run(["status"], { env: { HOME: home } }), /2\/11 enabled/);
+    run(["disable", "builder"], { env: { HOME: home } });
+    assert.equal(existsSync(join(dir, "agents", "builder.md")), false);
+    assert.equal(existsSync(join(dir, "agents", "pm.md")), true);
+    const skill = readFileSync(join(dir, "skills", "staffed", "SKILL.md"), "utf8");
+    assert.match(skill, /\| `pm` \| balanced \| low \|/);
+    assert.doesNotMatch(skill, /\| `builder` \| strong \| low \|/);
+    run(["disable"], { env: { HOME: home } });
+    assert.equal(existsSync(join(dir, "agents", ".staffed.json")), false);
+    assert.equal(existsSync(join(dir, "skills", "staffed", "SKILL.md")), false);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }

@@ -45,6 +45,7 @@
     "src",
     "bin",
     "models.json",
-    "README.md"
+    "README.md",
+    "docs"
   ]
 }

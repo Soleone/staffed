@@ -11,8 +11,7 @@
 // Keeping the skill visible (rather than disable-model-invocation) is what lets "use the
 // "staff this project" work in plain English instead of requiring a slash command.
 
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { STAGES } from "./brief.mjs";
 
 export const SKILL_NAME = "staffed";
@@ -52,7 +51,8 @@ const SIZING = [
 ];
 
 /** Generate SKILL.md for a specific set of enabled personas. */
-export function generate(enabled, personas = []) {
+export function generateSkill({ hostKey = "pi", enabled, personas = [] }) {
+  const claude = hostKey === "claude-code";
   const set = new Set(enabled);
   const stages = STAGES.filter((s) => set.has(s.name));
   const partial = stages.length < STAGES.length;
@@ -76,10 +76,10 @@ export function generate(enabled, personas = []) {
     `name: ${SKILL_NAME}`,
     "description: >-",
     ...wrap(
-      "Staff a project with a coordinated product org of subagent personas — research, PRD, UX, " +
+      `Staff a project with a coordinated product org of ${claude ? "Agent" : "subagent"} personas — research, PRD, UX, ` +
         "copy, design, architecture, implementation, review, release, launch, and metrics. Use " +
-        'ONLY when explicitly engaged: "staff this project", "use Staffed", or /skill:staffed. ' +
-        "Do NOT use for ordinary edits, bug fixes, refactors, reviews or questions — those are " +
+        `ONLY when explicitly engaged: "staff this project", "use Staffed", or ${claude ? "/staffed" : "/skill:staffed"}. ` +
+        `${claude ? "Do NOT use for ordinary prompts, including edits, bug fixes, refactors, reviews or questions" : "Do NOT use for ordinary edits, bug fixes, refactors, reviews or questions"} — those are ` +
         "faster done directly.",
       84,
     )
@@ -91,7 +91,7 @@ export function generate(enabled, personas = []) {
     "",
     wrap(
       "You are the orchestrator, not a worker. Decompose the goal, dispatch the smallest sufficient " +
-        "set of personas with the `subagent` tool, validate their output contracts, and loop back " +
+        `set of personas with ${claude ? "Agent" : "the `subagent` tool"}, validate their output contracts, and loop back ` +
         "only when a material failure requires it. One persona is a valid staffed pipeline.",
     ),
     "",
@@ -212,46 +212,15 @@ export function generate(enabled, personas = []) {
   if (has("analyst") && has("pm")) loops.push("- An `analyst` readout starts the next cycle at `pm`.");
   if (loops.length) body.push("", "## Loops", "", ...loops);
 
-  const parallel = [];
-  if (has("builder")) {
-    parallel.push(
-      "Fan out `builder`s only for independent tasks and use `worktree: true` (plus " +
-        "`worktreeSetup: \"node-modules\"` when needed).",
-    );
+  if (!claude) {
+    const parallel = [];
+    if (has("builder")) parallel.push("Fan out `builder`s only for independent tasks and use `worktree: true` (plus `worktreeSetup: \"node-modules\"` when needed).");
+    if (has("reviewer")) parallel.push("Parallel `reviewer`s in one checkout need `allowParallelWrites: true`; they are fenced by contract.");
+    if (parallel.length) body.push("", "## Parallelism", "", wrap(parallel.join(" ")));
   }
-  if (has("reviewer")) {
-    parallel.push(
-      "Parallel `reviewer`s in one checkout need `allowParallelWrites: true`; they are fenced by contract.",
-    );
-  }
-  if (parallel.length) body.push("", "## Parallelism", "", wrap(parallel.join(" ")));
   body.push("");
-
   return body.join("\n");
 }
 
+export const generate = (enabled, personas = []) => generateSkill({ hostKey: "pi", enabled, personas });
 export const skillPath = (dir) => join(dir, SKILL_NAME, "SKILL.md");
-
-export function inspectSkill(dir, enabled, personas) {
-  const file = skillPath(dir);
-  if (!existsSync(file)) return { file, state: "absent" };
-  const text = readFileSync(file, "utf8");
-  return { file, state: text === generate(enabled, personas) ? "current" : "stale" };
-}
-
-export function writeSkill(dir, enabled, personas) {
-  const file = skillPath(dir);
-  const next = generate(enabled, personas);
-  const existed = existsSync(file);
-  if (existed && readFileSync(file, "utf8") === next) return { file, action: "unchanged" };
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, next);
-  return { file, action: existed ? "updated" : "created" };
-}
-
-export function removeSkill(dir) {
-  const file = skillPath(dir);
-  if (!existsSync(file)) return { file, action: "absent" };
-  rmSync(dirname(file), { recursive: true, force: true });
-  return { file, action: "removed" };
-}

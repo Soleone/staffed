@@ -11,8 +11,8 @@ import {
 } from "./models.mjs";
 import { DEFAULT_HOST, HOSTS, resolveHost } from "./hosts.mjs";
 import * as placement from "./install.mjs";
-import { STAGES, generate, inspectBrief, removeBrief, writeBrief } from "./brief.mjs";
-import { inspectSkill, removeSkill, writeSkill, generate as skillText } from "./skill.mjs";
+import { STAGES, generateBrief } from "./brief.mjs";
+import { generateSkill } from "./skill.mjs";
 
 const HELP = `staffed — coordinated subagent roles for any project
 
@@ -166,7 +166,11 @@ export function printTiers(profileArg, cfg = loadConfig()) {
 }
 
 /** Compare configured models against what this pi install actually offers. */
-async function doctor() {
+async function doctor(hostName = DEFAULT_HOST) {
+  if (hostName === "claude-code") {
+    console.error("doctor can inspect the Pi registry only; Claude alias entitlement cannot be verified here.");
+    return 1;
+  }
   const { homedir } = await import("node:os");
   const { join } = await import("node:path");
   const { readFileSync } = await import("node:fs");
@@ -213,9 +217,11 @@ function printStatus(s) {
   console.log(`scope   ${s.scope}`);
   console.log(`dir     ${s.dir}`);
   console.log(
-    s.manifest
-      ? `updated v${s.manifest.version}, ${s.manifest.updatedAt}`
-      : "manifest none — nothing enabled here",
+    s.manifestError
+      ? `manifest INVALID — ${s.manifestError}`
+      : s.manifest
+        ? `updated v${s.manifest.version}, ${s.manifest.updatedAt}`
+        : "manifest none — nothing enabled here",
   );
   console.log();
   const rows = [
@@ -239,22 +245,17 @@ function printStatus(s) {
   console.log(`\n${enabled.length}/${s.items.length} enabled`);
   if (drift.length) console.log(`${drift.length} file(s) differ from the manifest`);
 
-  // Discovery health matters as much as placement: enabled personas that nothing points at
-  // are personas the host session will never find.
-  const k = inspectSkill(s.host.skillDir(s.scope, process.cwd()), enabled, loadPersonas());
-  const b = inspectBrief(s.host.briefFile(s.scope, process.cwd()), enabled);
-
-  const line = (label, state, file, missing) => {
+  const line = (label, item, missing) => {
     const text = {
-      current: "current",
-      stale: `STALE — does not match what is enabled; re-run \`staffed enable\``,
-      absent: missing,
-    }[state];
-    console.log(`${label.padEnd(8)} ${text}\n         ${file}`);
+      current: "current", stale: "STALE — does not match what is enabled; re-run `staffed enable`",
+      absent: missing, disabled: missing, foreign: "FOREIGN — not owned by Staffed", modified: "MODIFIED locally",
+      missing: "MISSING — tracked item is absent", replaced: "REPLACED",
+    }[item.state] ?? item.state;
+    console.log(`${label.padEnd(8)} ${text}\n         ${item.file ?? item.path}`);
   };
-
-  line("skill", k.state, k.file, enabled.length ? "MISSING — nothing tells the host these personas exist" : "absent");
-  if (b.state !== "absent") line("brief", b.state, b.file, "absent");
+  line("skill", s.skill, enabled.length ? "MISSING — nothing tells the host these personas exist" : "absent");
+  if (s.brief.state !== "absent") line("brief", s.brief, "absent");
+  if (s.collisions?.length) console.log(`collisions ${s.collisions.map((c) => `${c.name}: ${c.path}`).join(", ")}`);
 }
 
 const modelOf = (i) => {
@@ -310,7 +311,7 @@ export async function main(argv = process.argv.slice(2)) {
     return 0;
   }
 
-  if (cmd === "doctor") return doctor();
+  if (cmd === "doctor") return doctor(opts.host);
 
   if (cmd === "skill") {
     const host = resolveHost(opts.host);
@@ -320,7 +321,7 @@ export async function main(argv = process.argv.slice(2)) {
       return 1;
     }
     console.log(`# would go in ${host.skillDir(opts.scope, process.cwd())}/staffed/SKILL.md\n`);
-    console.log(skillText(enabled, loadPersonas()));
+    console.log(generateSkill({ hostKey: host.key, enabled, personas: loadPersonas() }));
     return 0;
   }
 
@@ -332,18 +333,13 @@ export async function main(argv = process.argv.slice(2)) {
       console.error(`nothing is enabled for host ${host.label} (${opts.scope} scope), so there is no brief to write.`);
       return 1;
     }
-    if (opts.remove) {
-      const r = removeBrief(file);
-      console.log(`${r.action}: ${r.file}`);
-      return 0;
-    }
-    if (opts.write) {
-      const r = writeBrief(file, enabled);
+    if (opts.remove || opts.write) {
+      const r = placement.setBrief({ ...opts, action: opts.remove ? "remove" : "write" });
       console.log(`${r.action}: ${r.file}`);
       return 0;
     }
     console.log(`# would go in ${file}\n`);
-    console.log(generate(enabled));
+    console.log(generateBrief({ hostKey: host.key, enabled }));
     return 0;
   }
 
@@ -381,20 +377,6 @@ export async function main(argv = process.argv.slice(2)) {
     );
     if (r.dryRun) for (const i of r.items) console.log(`  ${i.file}  (${LABEL[i.state] ?? i.state})`);
 
-    // Personas are invisible on their own, so discovery ships with them. Both artefacts are
-    // regenerated from the set that is actually enabled rather than assuming a full roster.
-    if (!r.dryRun) {
-      const enabled = enabledNames(opts);
-      if (opts.skill !== false) {
-        const s = writeSkill(r.host.skillDir(r.scope, process.cwd()), enabled, loadPersonas());
-        console.log(`skill ${s.action}: ${s.file}`);
-      }
-      if (opts.brief === true) {
-        const b = writeBrief(r.host.briefFile(r.scope, process.cwd()), enabled);
-        console.log(`brief ${b.action}: ${b.file}`);
-      }
-    }
-
     const notes = [...(r.host.notes ?? [])];
     if (r.scope === "project") notes.push("This directory is committable — the roster travels with the repo.");
     if (notes.length) {
@@ -410,21 +392,6 @@ export async function main(argv = process.argv.slice(2)) {
     console.log(`disabled ${r.removed.length}${r.removed.length ? `: ${r.removed.join(", ")}` : ""}`);
     console.log(`${r.remaining} still enabled in ${r.dir}`);
 
-    // Follow whatever is actually present rather than the flags: shrink discovery to the
-    // remaining roster, or take it away entirely once nothing is left.
-    const host = resolveHost(opts.host);
-    const enabled = enabledNames(opts);
-    const dir = host.skillDir(opts.scope, process.cwd());
-
-    if (opts.skill !== false) {
-      const s = enabled.length ? writeSkill(dir, enabled, loadPersonas()) : removeSkill(dir);
-      if (s.action !== "absent") console.log(`skill ${s.action}: ${s.file}`);
-    }
-    if (opts.brief !== false) {
-      const file = host.briefFile(opts.scope, process.cwd());
-      const b = enabled.length ? writeBrief(file, enabled) : removeBrief(file);
-      if (b.action !== "absent") console.log(`brief ${b.action}: ${b.file}`);
-    }
     if (r.kept.length) {
       console.log(`kept ${r.kept.length} locally modified: ${r.kept.join(", ")} (use --force)`);
     }

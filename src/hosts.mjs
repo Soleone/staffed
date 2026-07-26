@@ -54,17 +54,28 @@ export const HOSTS = {
     ],
   },
 
-  // Unimplemented on purpose: shape is known, but nothing is verified against a real
-  // install yet, and a half-right installer is worse than an honest error.
   "claude-code": {
     label: "Claude Code",
+    // Implementation is retained behind the host gate until an authenticated
+    // real-Claude activation/non-activation attestation is recorded.
     supported: false,
+    allowedProfiles: ["none", "inherit", "claude-code"],
     userDir: () => join(homedir(), ".claude", "agents"),
     projectDir: (cwd) => join(cwd, ".claude", "agents"),
     briefFile: (scope, cwd) => (scope === "project" ? join(cwd, "CLAUDE.md") : join(homedir(), ".claude", "CLAUDE.md")),
     skillDir: (scope, cwd) => (scope === "project" ? join(cwd, ".claude", "skills") : join(homedir(), ".claude", "skills")),
     filename: (p) => `${p.name}.md`,
-    render: (p, tier) => render({ name: p.name, description: p.meta.description, model: modelOnly(tier) }, p.body),
+    render: (p, tier) =>
+      render(
+        {
+          name: p.name,
+          description:
+            'Staffed role; use only after /staffed, "use Staffed", or "staff this project". Never select for ordinary prompts. ' +
+            p.meta.description,
+          model: modelOnly(tier),
+        },
+        p.body,
+      ),
     notes: [
       "Model names differ (opus/sonnet/haiku) — use the claude-code profile.",
       "Has no per-agent thinking level, so the thinking half of a tier is dropped.",
