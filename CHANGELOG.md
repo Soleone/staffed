@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/Soleone/staffed/compare/v1.1.0...v1.2.0) (2026-07-26)
+
+
+### Features
+
+* adaptive effort and tier escalation ([767ba63](https://github.com/Soleone/staffed/commit/767ba631ad245c81a0cb7884695705de8eec72b5))
+
 ## [1.1.0](https://github.com/Soleone/staffed/compare/v1.0.0...v1.1.0) (2026-07-26)
 
 
