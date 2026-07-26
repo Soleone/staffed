@@ -1,6 +1,6 @@
 {
   "name": "staffed",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "description": "Staff any project with coordinated subagent roles. Includes eleven product personas spanning research, definition, design, implementation, release, launch, and measurement, with no runtime or dependencies.",
   "keywords": [
     "pi-agents",
