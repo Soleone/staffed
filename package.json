@@ -12,7 +12,19 @@
     "marketing"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Soleone/staffed.git"
+  },
+  "homepage": "https://github.com/Soleone/staffed#readme",
+  "bugs": {
+    "url": "https://github.com/Soleone/staffed/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
+    "prepublishOnly": "npm test && npm run validate",
     "test": "node --test",
     "validate": "node bin/staffed.mjs validate",
     "list": "node bin/staffed.mjs list",
@@ -23,7 +35,7 @@
   },
   "type": "module",
   "bin": {
-    "staffed": "./bin/staffed.mjs"
+    "staffed": "bin/staffed.mjs"
   },
   "engines": {
     "node": ">=18"

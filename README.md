@@ -377,6 +377,34 @@ Personas are individually useful, and the artifact convention degrades gracefull
 missing `artifacts/pm/index.md` just means the persona asks for that input instead of
 reading it.
 
+## Releasing
+
+Releases are managed by Release Please and npm trusted publishing. Conventional commits
+on `main` update a release PR containing the next version and changelog:
+
+- `fix:` and `perf:` produce a patch release
+- `feat:` produces a minor release
+- `feat!:` or a `BREAKING CHANGE:` footer produces a major release
+- `docs:`, `test:`, and `chore:` do not release by themselves
+
+Merge the release PR to run tests and package validation, create the GitHub release and
+`v*` tag, and publish to npm. The workflow uses short-lived OIDC credentials and needs no
+`NPM_TOKEN` secret. It publishes only when the matching GitHub release exists and that
+version is absent from npm, so a failed publish can be retried safely.
+
+One-time repository setup:
+
+1. In GitHub, allow Actions to create pull requests under **Settings → Actions → General**.
+2. On npm, open the `staffed` package's **Settings → Trusted Publisher** and choose
+   GitHub Actions.
+3. Set organization/user to `Soleone`, repository to `staffed`, workflow filename to
+   `release.yml`, and allow `npm publish`. Leave the environment blank.
+4. After the first successful OIDC release, optionally require 2FA and disallow legacy
+   tokens under npm publishing access.
+
+The current release baseline lives in `.release-please-manifest.json`; do not run
+`npm version` manually or edit versions outside the release PR.
+
 ## Portability
 
 The markdown body is the asset. Since no persona declares `tools` and none is pinned to
