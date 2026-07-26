@@ -1,4 +1,4 @@
-// The company skill: how a host session learns the roster exists and how to run it.
+// The Staffed skill: how a host session learns the roster exists and how to run it.
 //
 // Agents are invisible — `subagent` surfaces them only in error messages. Skills are the
 // inverse: pi puts every skill's name and description in the system prompt at startup and
@@ -9,13 +9,13 @@
 // piece of work deserves a product pipeline is a question about intent, which lives with
 // the user and is not inferable from a prompt, so the model is told to wait to be asked.
 // Keeping the skill visible (rather than disable-model-invocation) is what lets "use the
-// company" work in plain English instead of requiring a slash command.
+// "staff this project" work in plain English instead of requiring a slash command.
 
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { STAGES } from "./brief.mjs";
 
-export const SKILL_NAME = "company";
+export const SKILL_NAME = "staffed";
 
 const wrap = (text, width = 88) => {
   const out = [];
@@ -73,18 +73,18 @@ export function generate(enabled, personas = []) {
     `name: ${SKILL_NAME}`,
     "description: >-",
     ...wrap(
-      "Engage a full product org of subagent personas — research, PRD, UX, copy, design, " +
-        "architecture, implementation, review, release, launch, metrics — to take work from idea " +
-        'to shipped. Use ONLY when explicitly engaged: "use the company", "ceo mode", or ' +
-        "/skill:company. Do NOT use for ordinary edits, bug fixes, refactors, reviews or " +
-        "questions — those are faster done directly.",
+      "Staff a project with a coordinated product org of subagent personas — research, PRD, UX, " +
+        "copy, design, architecture, implementation, review, release, launch, and metrics. Use " +
+        'ONLY when explicitly engaged: "staff this project", "use Staffed", or /skill:staffed. ' +
+        "Do NOT use for ordinary edits, bug fixes, refactors, reviews or questions — those are " +
+        "faster done directly.",
       84,
     )
       .split("\n")
       .map((l) => `  ${l}`),
     "---",
     "",
-    "# The company",
+    "# Staffed",
     "",
     wrap(
       "You are the orchestrator, not a worker. Decompose the goal, dispatch personas with the " +

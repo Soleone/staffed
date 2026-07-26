@@ -8,9 +8,9 @@
     "from the model because hosts spell it differently: pi appends ':level', while",
     "Claude Code has no per-agent equivalent and drops it.",
     "",
-    "Edit via: agent-company tier deep --model X --thinking xhigh",
+    "Edit via: staffed tier deep --model X --thinking xhigh",
     "'unverified' lists tiers seeded by guesswork; declaring one clears its entry.",
-    "Check your own install with: agent-company doctor"
+    "Check your own install with: staffed doctor"
   ],
   "profile": "pi",
   "profiles": {

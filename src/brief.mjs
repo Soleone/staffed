@@ -12,8 +12,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
-const START = "<!-- agent-company:start -->";
-const END = "<!-- agent-company:end -->";
+const START = "<!-- staffed:start -->";
+const END = "<!-- staffed:end -->";
 
 /** Canonical pipeline order. `validate` checks this covers the roster exactly. */
 export const STAGES = [
@@ -66,7 +66,7 @@ export function generate(enabled) {
   const partial = stages.length < STAGES.length;
 
   const body = [
-    "## Agent company",
+    "## Staffed",
     "",
     wrap(
       "This project has a product org available as subagents, dispatched with the `subagent` " +

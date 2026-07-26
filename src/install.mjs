@@ -10,7 +10,7 @@ import { ROOT, loadPersonas } from "./personas.mjs";
 import { resolveProfile, tierFor } from "./models.mjs";
 import { resolveHost, targetDir } from "./hosts.mjs";
 
-const MANIFEST = ".agent-company.json";
+const MANIFEST = ".staffed.json";
 const sha = (s) => createHash("sha256").update(s).digest("hex").slice(0, 16);
 const pkgVersion = () => JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).version;
 
@@ -152,7 +152,7 @@ export function enable(opts) {
 export function disable(opts) {
   const p = plan({ ...opts, mode: "copy", profile: "none" });
   const { force = false } = opts;
-  if (!p.manifest) throw new Error(`nothing enabled by agent-company in ${p.dir}`);
+  if (!p.manifest) throw new Error(`nothing enabled by Staffed in ${p.dir}`);
 
   const files = { ...(p.manifest.files ?? {}) };
   const removed = [];
@@ -183,7 +183,7 @@ function writeManifest(p, files) {
     join(p.dir, MANIFEST),
     `${JSON.stringify(
       {
-        package: "agent-company",
+        package: "staffed",
         version: pkgVersion(),
         host: p.host.key,
         scope: p.scope,

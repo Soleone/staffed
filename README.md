@@ -1,8 +1,8 @@
-# agent-company
+# Staffed
 
-Eleven subagent personas that cover a digital product end to end — research, product
-definition, UX, copy, visual and audio design, architecture, implementation, review,
-release, launch, and measurement — plus a small CLI that installs them.
+Staff any project with coordinated subagent roles. The included product staff covers
+research, product definition, UX, copy, visual and audio design, architecture,
+implementation, review, release, launch, and measurement.
 
 It aims to be the simplest, lightest way to run a real product pipeline through agents:
 **there is no runtime.** No orchestration engine, no graph to define, no framework to
@@ -30,13 +30,13 @@ everything:
 ## Install
 
 ```bash
-pnpm dlx agent-company enable      # or: npx agent-company enable
+pnpm dlx staffed enable      # or: npx staffed enable
 ```
 
 That does two things, both required:
 
 1. renders all eleven personas into `~/.pi/agent/agents/`
-2. installs a **`company` skill** into `~/.pi/agent/skills/`
+2. installs a **`staffed` skill** into `~/.pi/agent/skills/`
 
 The second one is not a nicety. `subagent` surfaces the roster only inside its error
 messages — nothing injects it into the system prompt, and the tool description does not
@@ -44,22 +44,22 @@ enumerate agents — so **on their own, these personas are undiscoverable.** The
 what points at them, and it carries what no single persona can state: how to size a
 pipeline, the artifact convention, and the escalation loop.
 
-Nothing of yours is modified. Confirm both halves with `agent-company status`.
+Nothing of yours is modified. Confirm both halves with `staffed status`.
 
 There is no API to learn, so using it is a sentence:
 
 ```
-Build a link shortener with custom domains — use the company.
+Build a link shortener with custom domains — staff this project.
 ```
 
-That phrase (or "ceo mode", or `/skill:company`) engages the org. The session dispatches
-from there, and you read `artifacts/` instead of a wall of chat.
+That phrase (or "use Staffed", or `/skill:staffed`) engages the org. The session
+dispatches from there, and you read `artifacts/` instead of a wall of chat.
 
 ```bash
-agent-company enable pm architect     # only these, additive
-agent-company enable --scope project  # into ./.pi/agents/, committable
-agent-company disable reviewer        # drop one
-agent-company status                  # what is enabled, and whether it drifted
+staffed enable pm architect     # only these, additive
+staffed enable --scope project  # into ./.pi/agents/, committable
+staffed disable reviewer        # drop one
+staffed status                  # what is enabled, and whether it drifted
 ```
 
 Installs are tracked in a manifest next to the personas, so `disable` removes only
@@ -114,8 +114,8 @@ entire mechanism.
 | `marketer` | positioning, launch | `artifacts/marketer/` | positioning + {headline, body, CTA} + checklist |
 | `analyst` | product metrics, experiments, readout | `artifacts/analyst/` | metric definitions + analysis + recommendation |
 
-Each persona also declares a model tier in its own file; `agent-company tier` prints
-the mapping. See [Model tiers](#model-tiers).
+Each persona also declares a model tier in its own file; `staffed tier` prints the
+mapping. See [Model tiers](#model-tiers).
 
 ## Suggested pipeline
 
@@ -189,10 +189,10 @@ with:
 `models.json` maps tiers to concrete models, per host profile:
 
 ```bash
-agent-company tier                                              # show the mapping
-agent-company tier deep --model claude-opus-5 --thinking xhigh  # declare one
-agent-company doctor                                            # verify ids exist here
-agent-company enable --profile pi                               # apply while rendering
+staffed tier                                              # show the mapping
+staffed tier deep --model claude-opus-5 --thinking xhigh  # declare one
+staffed doctor                                            # verify ids exist here
+staffed enable --profile pi                               # apply while rendering
 ```
 
 A tier resolves to a **model and a thinking level**, stored separately because hosts
@@ -226,27 +226,27 @@ Agents and skills are exact opposites in pi, which is what decides the design:
 
 So the personas are the workers and the skill is the operating manual — each mechanism
 doing the thing it is actually good at. `enable` generates
-`~/.pi/agent/skills/company/SKILL.md` and its description is always resident:
+`~/.pi/agent/skills/staffed/SKILL.md` and its description is always resident:
 
 ```yaml
 description: >-
-  Engage a full product org of subagent personas — research, PRD, UX, copy, design,
-  architecture, implementation, review, release, launch, metrics — to take work from
-  idea to shipped. Use ONLY when explicitly engaged: "use the company", "ceo mode", or
-  /skill:company. Do NOT use for ordinary edits, bug fixes, refactors, reviews or
+  Staff a project with a coordinated product org of subagent personas — research, PRD,
+  UX, copy, design, architecture, implementation, review, release, launch, and metrics.
+  Use ONLY when explicitly engaged: "staff this project", "use Staffed", or
+  /skill:staffed. Do NOT use for ordinary edits, bug fixes, refactors, reviews or
   questions — those are faster done directly.
 ```
 
 **That is written as a gate, not an invitation**, and the distinction is the whole point.
 Whether a task deserves an eleven-stage product process is a question about *intent* —
-"build me a link shortener" is a weekend hack or a company depending on something that
-exists only in your head. A model cannot infer it, and one guessing will be wrong in both
-directions, differently on every model release. So the always-resident line advertises
-the capability and then tells the model to wait to be asked.
+"build me a link shortener" can mean a weekend hack or a staffed product effort depending
+on something that exists only in your head. A model cannot infer it, and one guessing will
+be wrong in both directions, differently on every model release. So the always-resident
+line advertises the capability and then tells the model to wait to be asked.
 
 Keeping it visible is deliberate. `disable-model-invocation: true` would hide the skill
-entirely and look like the pure-explicit answer, but then *"use the company for this"* in
-plain English would silently do nothing and you would have to remember the slash command.
+entirely and look like the pure-explicit answer, but then *"staff this project"* in plain
+English would silently do nothing and you would have to remember the slash command.
 Visible-but-gated is what makes natural language work.
 
 ### Sizing, so it is not greedy once engaged
@@ -282,8 +282,8 @@ that are not installed, which fails at the tool call. `status` reports the skill
 ### If you want unconditional presence
 
 `--brief` additionally writes the same guidance into `AGENTS.md`, wrapped in
-`<!-- agent-company:start -->` markers so it updates and removes cleanly without touching
-the rest of the file. It is off by default: it costs context on every single turn, where
+`<!-- staffed:start -->` markers so it updates and removes cleanly without touching the
+rest of the file. It is off by default: it costs context on every single turn, where
 the skill costs one line until it is used.
 
 ## Design decisions
@@ -324,7 +324,7 @@ Discovery precedence is **package < user < project** — override by exact name.
 - `architect` / `builder` don't collide by name with a typical pack (`planner`,
   `worker`, `fixer`) but overlap conceptually. Routing stays clean because the
   descriptions are mutually exclusive; if you want one canonical set,
-  `agent-company disable <name>` on the overlap.
+  `staffed disable <name>` on the overlap.
 
 Personas are individually useful, and the artifact convention degrades gracefully — a
 missing `artifacts/pm/index.md` just means the persona asks for that input instead of
@@ -344,4 +344,4 @@ translate. The only deltas that exist:
 
 Both are stubbed in `src/hosts.mjs` with `supported: false`, so requesting one fails
 with an explanation rather than writing files nobody has verified. Add a host there, a
-profile in `models.json`, then `agent-company enable --host <name>`.
+profile in `models.json`, then `staffed enable --host <name>`.

@@ -1,7 +1,7 @@
 {
-  "name": "agent-company",
+  "name": "staffed",
   "version": "0.3.0",
-  "description": "Eleven subagent personas covering a digital product end to end - research, product definition, UX, copy, design, architecture, implementation, review, release, launch, measurement. No runtime, no dependencies: plain markdown plus a small installer.",
+  "description": "Staff any project with coordinated subagent roles. Includes eleven product personas spanning research, definition, design, implementation, release, launch, and measurement, with no runtime or dependencies.",
   "keywords": [
     "pi-agents",
     "subagent",
@@ -13,16 +13,16 @@
   ],
   "license": "MIT",
   "scripts": {
-    "validate": "node bin/agent-company.mjs validate",
-    "list": "node bin/agent-company.mjs list",
-    "tier": "node bin/agent-company.mjs tier",
-    "doctor": "node bin/agent-company.mjs doctor",
-    "enable": "node bin/agent-company.mjs enable",
-    "status": "node bin/agent-company.mjs status"
+    "validate": "node bin/staffed.mjs validate",
+    "list": "node bin/staffed.mjs list",
+    "tier": "node bin/staffed.mjs tier",
+    "doctor": "node bin/staffed.mjs doctor",
+    "enable": "node bin/staffed.mjs enable",
+    "status": "node bin/staffed.mjs status"
   },
   "type": "module",
   "bin": {
-    "agent-company": "./bin/agent-company.mjs"
+    "staffed": "./bin/staffed.mjs"
   },
   "engines": {
     "node": ">=18"

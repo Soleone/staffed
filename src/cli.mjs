@@ -7,27 +7,27 @@ import * as placement from "./install.mjs";
 import { STAGES, generate, inspectBrief, removeBrief, writeBrief } from "./brief.mjs";
 import { inspectSkill, removeSkill, writeSkill, generate as skillText } from "./skill.mjs";
 
-const HELP = `agent-company — a full product org as subagents
+const HELP = `staffed — coordinated subagent roles for any project
 
 roster
-  agent-company enable                 enable every persona
-  agent-company enable pm architect    enable only these (additive)
-  agent-company disable                disable every persona we enabled
-  agent-company disable pm             disable only these
-  agent-company status                 what is enabled, and whether it drifted
-  agent-company list                   the roster and each persona's tier
+  staffed enable                 enable every persona
+  staffed enable pm architect    enable only these (additive)
+  staffed disable                disable every persona we enabled
+  staffed disable pm             disable only these
+  staffed status                 what is enabled, and whether it drifted
+  staffed list                   the roster and each persona's tier
 
 discovery (agents are invisible to a host session; something must point at them)
-  agent-company skill                  print the company skill — installed by default
-  agent-company brief                  print the optional AGENTS.md block
-  agent-company brief --write          also put it in AGENTS.md
-  agent-company brief --remove         take it back out
+  staffed skill                  print the Staffed skill — installed by default
+  staffed brief                  print the optional AGENTS.md block
+  staffed brief --write          also put it in AGENTS.md
+  staffed brief --remove         take it back out
 
 tiers
-  agent-company tier                               show tier -> model/thinking
-  agent-company tier deep --model X --thinking Y   declare what a tier means
-  agent-company tier --profile claude-code         switch the default profile
-  agent-company doctor                             check models against this install
+  staffed tier                               show tier -> model/thinking
+  staffed tier deep --model X --thinking Y   declare what a tier means
+  staffed tier --profile claude-code         switch the default profile
+  staffed doctor                             check models against this install
 
 options
   --host <name>     ${Object.keys(HOSTS).join(" | ")}  (default: ${DEFAULT_HOST})
@@ -36,7 +36,7 @@ options
   --model <m>       with \`tier\`: the model for that tier
   --thinking <t>    with \`tier\`: reasoning level, or "none" to clear
   --brief           additionally write the AGENTS.md block (off by default)
-  --no-skill        do not install the company skill
+  --no-skill        do not install the Staffed skill
   --write, --remove with \`brief\`: apply or undo instead of printing
   --link            symlink instead of copy (dev workflow; excludes --profile)
   --force           overwrite foreign or locally modified files
@@ -112,8 +112,8 @@ function warnUnverified(profile) {
   console.log(
     wrap(
       `warning: tier(s) ${profile.unverified.join(", ")} in profile "${profile.key}" were seeded by ` +
-        "guesswork and are not confirmed against a real install. Run `agent-company doctor`, then " +
-        "declare them with `agent-company tier <tier> --model <m> --thinking <t>`.",
+        "guesswork and are not confirmed against a real install. Run `staffed doctor`, then " +
+        "declare them with `staffed tier <tier> --model <m> --thinking <t>`.",
       "",
     ),
   );
@@ -203,7 +203,7 @@ function printStatus(s) {
   const line = (label, state, file, missing) => {
     const text = {
       current: "current",
-      stale: `STALE — does not match what is enabled; re-run \`agent-company enable\``,
+      stale: `STALE — does not match what is enabled; re-run \`staffed enable\``,
       absent: missing,
     }[state];
     console.log(`${label.padEnd(8)} ${text}\n         ${file}`);
@@ -243,7 +243,7 @@ export async function main(argv = process.argv.slice(2)) {
       printTiers();
       return 0;
     }
-    if (!names.length) throw new Error("which tier? e.g. `agent-company tier deep --model X --thinking xhigh`");
+    if (!names.length) throw new Error("which tier? e.g. `staffed tier deep --model X --thinking xhigh`");
     const r = setTier(argv.includes("--profile") ? opts.profile : null, names[0], opts);
     console.log(`profile ${r.profile}: ${r.tier} -> ${formatTier(r.config)}\n`);
     printTiers(r.profile);
@@ -259,7 +259,7 @@ export async function main(argv = process.argv.slice(2)) {
       console.error(`nothing is enabled for host ${host.label} (${opts.scope} scope).`);
       return 1;
     }
-    console.log(`# would go in ${host.skillDir(opts.scope, process.cwd())}/company/SKILL.md\n`);
+    console.log(`# would go in ${host.skillDir(opts.scope, process.cwd())}/staffed/SKILL.md\n`);
     console.log(skillText(enabled, loadPersonas()));
     return 0;
   }
