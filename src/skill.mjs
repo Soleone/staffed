@@ -6,13 +6,13 @@
 // the workers it dispatches.
 //
 // The description is deliberately written as a gate rather than an invitation. Whether a
-// piece of work deserves a product pipeline is a question about intent, which lives with
+// piece of work deserves a staffed workflow is a question about intent, which lives with
 // the user and is not inferable from a prompt, so the model is told to wait to be asked.
 // Keeping the skill visible (rather than disable-model-invocation) is what lets "use the
 // "staff this project" work in plain English instead of requiring a slash command.
 
 import { join } from "node:path";
-import { STAGES } from "./brief.mjs";
+import { DEFAULT_PACK, dimensionsFor, resolvePack } from "./packs.mjs";
 
 export const SKILL_NAME = "staffed";
 
@@ -40,30 +40,35 @@ function chain(stages) {
   return parts.join(" → ");
 }
 
-/** Size the pipeline to the work. Only rows whose personas are enabled are shown. */
-const SIZING = [
-  { work: "a copy or docs change", chain: ["writer"] },
-  { work: "a small bug or config change", chain: ["builder"] },
-  { work: "a well-specified feature", chain: ["builder"] },
-  { work: "a cross-boundary feature", chain: ["architect", "builder"] },
-  { work: "an ambiguous product feature", chain: ["pm", "architect", "builder"] },
-  { work: "a new product", chain: null },
-];
-
 /** Generate SKILL.md for a specific set of enabled personas. */
-export function generateSkill({ hostKey = "pi", enabled, personas = [] }) {
+export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: packName = DEFAULT_PACK, catalog }) {
   const claude = hostKey === "claude";
+  const pack = resolvePack(packName, catalog);
   const set = new Set(enabled);
-  const stages = STAGES.filter((s) => set.has(s.name));
-  const partial = stages.length < STAGES.length;
+  const stages = pack.stages.filter((s) => set.has(s.name));
+  const partial = stages.length < pack.stages.length;
   const has = (n) => set.has(n);
   const persona = (n) => personas.find((p) => p.name === n);
   const blurb = (n) => persona(n)?.summary ?? "";
+  const enabledRoleNames = stages.map((stage) => stage.name);
+  const configuredActivationExamples = pack.activationExamples.filter((example) =>
+    example.split(/\s+/).some((token) => enabledRoleNames.includes(token)),
+  );
+  const activationExamples = (configuredActivationExamples.length
+    ? configuredActivationExamples
+    : enabledRoleNames.slice(0, 2).map((name) => `${name} scep dir`))
+    .map((example) => `"${example}"`)
+    .join(" or ");
+  const availableRecipes = pack.recipes.filter((recipe) => recipe.composition.some((token) => set.has(token)));
+  const receiptRecipe = availableRecipes[0];
+  const receiptExample = receiptRecipe
+    ? `Dispatching ${receiptRecipe.composition.join(" + ")}: ${receiptRecipe.goal}`
+    : `Dispatching ${stages[0]?.name ?? "role"}: plain role defaults.`;
 
-  // A partial roster can collapse two sizes onto the same chain (drop `architect` and a
-  // feature looks like a product). Merge the labels rather than printing the row twice.
+  // A partial roster can collapse multiple work sizes onto the same remaining chain.
+  // Merge their labels rather than printing duplicate rows.
   const byChain = new Map();
-  for (const r of SIZING) {
+  for (const r of pack.sizing) {
     const c = (r.chain ?? stages.map((s) => s.name)).filter(has);
     if (!c.length) continue;
     const key = c.join(" → ");
@@ -76,9 +81,10 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [] }) {
     `name: ${SKILL_NAME}`,
     "description: >-",
     ...wrap(
-      `Staff a project with a coordinated product org of ${claude ? "Agent" : "subagent"} personas — research, PRD, UX, ` +
-        "copy, design, architecture, implementation, review, release, launch, and metrics. Use " +
-        `ONLY when explicitly engaged: "staff this project", "use Staffed", or ${claude ? "/staffed" : "/skill:staffed"}. ` +
+      `Staff a project with ${pack.label}${pack.experimental ? " (experimental preview)" : ""}, a coordinated ${claude ? "Agent" : "subagent"} roster for ${pack.description.toLowerCase()} Use ` +
+        `ONLY when explicitly engaged: "staff this project", "use Staffed", ${claude ? "/staffed" : "/skill:staffed"}, ` +
+        `or a request combining one of these exact enabled Staffed roles with behavioral modifiers or aliases: ${enabledRoleNames.join(", ")}. ` +
+        `Examples: ${activationExamples}. ` +
         `${claude ? "Do NOT use for ordinary prompts, including edits, bug fixes, refactors, reviews or questions" : "Do NOT use for ordinary edits, bug fixes, refactors, reviews or questions"} — those are ` +
         "faster done directly.",
       84,
@@ -100,7 +106,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [] }) {
     wrap(
       "Default to one actor. Every additional stage must resolve a named uncertainty or material " +
         "risk that the current actor cannot own. Dispatching adds latency, cost, and a fresh context, " +
-        "so never add a persona merely because the work can be called a feature.",
+        "so never add a persona merely because the work can be split further.",
     ),
     "",
     "| Work | Chain |",
@@ -108,21 +114,14 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [] }) {
     ...rows,
     "",
     wrap(
-      "Skipping stages is normal. Reach for the full pipeline only when the product is genuinely " +
+      "Skipping stages is normal. Reach for the full pipeline only when the matter is genuinely " +
         "new and uncertain. Before launching more than two personas, state the planned dispatch " +
         "count and the specific risk or unknown each one resolves; shrink the plan if that case is weak.",
     ),
     "",
     "## Risk gates",
     "",
-    wrap(
-      "Do not add `reviewer` automatically. Add it when the change touches security, authentication, " +
-        "user data, destructive or irreversible state, migrations, public compatibility, deployment " +
-        "safety, broad cross-module behavior, or cannot be validated well by tests. Add `architect` " +
-        "only for a shared interface, multiple subsystem boundaries, or multiple independent build " +
-        "tasks. Add `pm` only when what or why remains unresolved; add `researcher` only when an " +
-        "external fact or feasibility question blocks that decision.",
-    ),
+    wrap(pack.riskGate),
     "",
     "## Compact by default",
     "",
@@ -158,6 +157,29 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [] }) {
         "into deeper planning or implementation without the user's approval.",
     ),
     "",
+    "## Compose a role (optional)",
+    "",
+    wrap(
+      "A composition is one role plus at most one mode from each optional dimension: stance, drive, lens, audience, and voice. Default to the plain role and add a modifier only when the user requested it or it addresses a named uncertainty or risk. Honor user modifiers. Every selected modifier must earn a material change; never fill every dimension by default. Modifiers never override role scope, correctness, effort, model tier, safety, permissions, or output contracts.",
+    ),
+    "",
+    ...dimensionsFor(pack.key, catalog).flatMap((dimension) => {
+      const render = (label, modes) => `${label}: ${modes.map((mode) => `\`${mode.name}\` (\`${mode.alias}\`)`).join(", ")}`;
+      if (dimension.name !== "audience") return [render(dimension.name, dimension.modes)];
+      const packNames = new Set(pack.audiences.map((mode) => mode.name));
+      return [render("audience (core)", dimension.modes.filter((mode) => !packNames.has(mode.name))), render(`audience (${pack.key})`, pack.audiences)];
+    }),
+    "",
+    `roles: ${stages.map((stage) => `\`${stage.name}\``).join(", ")}`,
+    "",
+    wrap(
+      `Matching is case-insensitive but exact: accept only canonical names or listed aliases, never arbitrary prefixes. If a modifier appears, the user asks about options, or you must select a composition, read \`references/composition.md\` before dispatching. Otherwise do not load it. Before dispatch, state a one-line receipt such as \`${receiptExample}\` A receipt is not enough: the persona task itself must include \`Composition:\` with canonical role and mode names plus one concise \`Behavior:\` line for every selected mode, copied from that mode's \`Dispatch behavior\` in the reference. Explicitly tell the persona that role scope, truth, correctness, safety, effort, model tier, permissions, and output contracts take precedence over every modifier.`,
+
+    ),
+    "",
+    "Recipes:",
+    ...availableRecipes.slice(0, 5).map((recipe) => `- ${recipe.goal} — ${recipe.composition.map((token) => `\`${token}\``).join(" + ")}`),
+    "",
     "## The roster",
     "",
     "| Persona | Default tier | Default effort | Dispatch it for |",
@@ -175,7 +197,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [] }) {
   ];
 
   if (partial) {
-    const missing = STAGES.filter((s) => !set.has(s.name)).map((s) => s.name);
+    const missing = pack.stages.filter((s) => !set.has(s.name)).map((s) => s.name);
     body.push(
       "",
       wrap(`Not installed: ${missing.join(", ")} — cover those stages yourself or skip them.`),
@@ -183,9 +205,8 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [] }) {
   }
 
   const artifactExceptions = [
-    has("builder") ? "`builder`'s artifact is the code itself" : "",
-    has("reviewer") ? "`reviewer` writes nothing" : "",
-  ].filter(Boolean);
+    ...pack.noDirectory.filter(has).map((name) => pack.noArtifact.includes(name) ? `\`${name}\` writes nothing` : `\`${name}\`'s artifact is its assigned work itself`),
+  ];
   body.push(
     "",
     "## Passing work between personas",
@@ -198,29 +219,49 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [] }) {
     ),
   );
 
-  const loops = [];
-  if (has("reviewer") && has("builder")) {
-    loops.push(
-      "- A material `request-changes` verdict goes back to `builder`; keep revision scope to the findings.",
-      "- Re-review only the prior findings and changed hunks unless a fix alters a foundational contract.",
-      "- Do not launch a second reviewer for low-risk nits or changes already proven by focused validation.",
-    );
-  }
-  if (has("builder") && has("architect")) {
-    loops.push("- A cross-boundary escalation from `builder` goes back to `architect` for a decision.");
-  }
-  if (has("analyst") && has("pm")) loops.push("- An `analyst` readout starts the next cycle at `pm`.");
+  const loops = pack.loops
+    .filter((loop) => loop.requires.every(has))
+    .map((loop) => `- ${loop.text}`);
   if (loops.length) body.push("", "## Loops", "", ...loops);
 
   if (!claude) {
-    const parallel = [];
-    if (has("builder")) parallel.push("Fan out `builder`s only for independent tasks and use `worktree: true` (plus `worktreeSetup: \"node-modules\"` when needed).");
-    if (has("reviewer")) parallel.push("Parallel `reviewer`s in one checkout need `allowParallelWrites: true`; they are fenced by contract.");
+    const parallel = pack.parallelism
+      .filter((item) => item.requires.every(has))
+      .map((item) => item.text);
     if (parallel.length) body.push("", "## Parallelism", "", wrap(parallel.join(" ")));
   }
   body.push("");
   return body.join("\n");
 }
 
+export function generateCompositionReference({ pack: packName = DEFAULT_PACK, personas = [], catalog } = {}) {
+  const pack = resolvePack(packName, catalog);
+  const roster = personas.length ? personas : pack.personas;
+  const lines = [
+    "# Staffed composition reference", "",
+    `Active staff pack: **${pack.label}**${pack.experimental ? " — experimental preview" : ""}.`, "",
+    "A dimension is a configurable axis; a mode is an available value; a selected mode is a modifier; one role plus modifiers is a composition. Select at most one mode per dimension. Controls such as effort, model tier, permissions, safety, and output contracts are never modifiers and always take precedence.", "",
+    "Use modifiers sparsely. Preserve explicit user modifiers, explain what agent-selected modifiers earn, and default to the plain role.", "",
+  ];
+  for (const dimension of dimensionsFor(pack.key, catalog)) {
+    lines.push(`## ${dimension.name}`, "", dimension.question, "");
+    const packNames = new Set(pack.audiences.map((mode) => mode.name));
+    for (const mode of dimension.modes) {
+      if (dimension.name === "audience" && mode === dimension.modes[0]) lines.push("### Core audiences", "");
+      if (dimension.name === "audience" && packNames.has(mode.name) && !packNames.has(dimension.modes[dimension.modes.indexOf(mode) - 1]?.name)) lines.push(`### ${pack.label} audiences`, "");
+      const heading = dimension.name === "audience" ? "####" : "###";
+      lines.push(`${heading} ${mode.name} (\`${mode.alias}\`)`, "", mode.summary, "", `Dispatch behavior: ${mode.phrase}.`, "", `Useful for: ${mode.usefulFor}.`, "", `Watch for: ${mode.shadow}.`, "");
+    }
+  }
+  lines.push("## Roles", "");
+  for (const persona of roster) lines.push(`### ${persona.name}`, "", persona.meta.description, "");
+  lines.push("## Recipes", "");
+  const roleNames = new Set(roster.map((persona) => persona.name));
+  for (const recipe of pack.recipes.filter((item) => item.composition.some((token) => roleNames.has(token)))) lines.push(`### ${recipe.name}`, "", recipe.goal, "", recipe.composition.map((token) => `\`${token}\``).join(" + "), "");
+  lines.push("## Composition rules", "", "- Matching is case-insensitive exact-token matching against canonical names and declared aliases.", "- One role is required; one mode maximum per optional dimension.", "- A modifier changes approach, not authority, truth, correctness, or scope.", "- Give a one-line composition receipt before dispatch.", "- Put the canonical composition and every selected mode's Dispatch behavior in the persona task; role, safety, controls, and output contracts always take precedence.", "");
+  return lines.join("\n");
+}
+
 export const generate = (enabled, personas = []) => generateSkill({ hostKey: "pi", enabled, personas });
 export const skillPath = (dir) => join(dir, SKILL_NAME, "SKILL.md");
+export const compositionReferencePath = (dir) => join(dir, SKILL_NAME, "references", "composition.md");

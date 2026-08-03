@@ -62,19 +62,33 @@ function discoveryRecords(value) {
   return value;
 }
 
+function referenceRecords(value) {
+  if (!object(value)) throw new Error("manifest references must be an object");
+  for (const [name, record] of Object.entries(value)) {
+    if (name === "composition") validateRecord(record, ["copy"], "manifest references.composition");
+    else throw new Error(`manifest references.${name} is not supported`);
+  }
+  return value;
+}
+
 export function normalizeManifest(raw, { hostKey, scope }) {
   if (!object(raw)) throw new Error("manifest must be an object");
   if (raw.package !== "staffed") throw new Error('manifest package must be "staffed"');
   if (raw.schema != null && raw.schema !== 2) throw new Error(`unsupported manifest schema ${raw.schema}`);
   if (raw.host !== hostKey) throw new Error(`manifest host is ${raw.host ?? "missing"}, expected ${hostKey}`);
   if (raw.scope !== scope) throw new Error(`manifest scope is ${raw.scope ?? "missing"}, expected ${scope}`);
+  if (raw.pack != null && (typeof raw.pack !== "string" || !raw.pack)) throw new Error("manifest pack must be a non-empty string");
   const legacy = raw.schema == null;
   const discovery = Object.hasOwn(raw, "discovery") ? discoveryRecords(raw.discovery) : {};
+  const references = Object.hasOwn(raw, "references") ? referenceRecords(raw.references) : {};
   return {
     ...raw,
     schema: 2,
     files: fileRecords(raw.files),
     discovery: legacy ? {} : discovery,
+    references: legacy ? {} : references,
+    pack: raw.pack ?? "product",
     legacy,
+    legacyPack: raw.pack == null,
   };
 }

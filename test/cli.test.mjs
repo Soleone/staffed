@@ -58,7 +58,7 @@ test("help documents default agent selection and detection exceptions", () => {
   assert.match(output, /Exactly one installed agent is selected automatically/);
   assert.match(output, /If both are installed, pass\s+--agent pi or --agent claude/);
   assert.match(output, /If neither is installed, a warning is printed and Pi\s+is used as the fallback/);
-  assert.match(output, /Agent-independent commands \(help, list, tier\/models, validate\)\s+skip detection/);
+  assert.match(output, /Agent-independent commands \(help, list, compose, pack list,\s+tier\/models, validate\) skip detection/);
 });
 
 test("agent-independent commands do not detect an ambiguous home", () => {
@@ -66,7 +66,7 @@ test("agent-independent commands do not detect an ambiguous home", () => {
   try {
     mkdirSync(join(home, ".pi", "agent"), { recursive: true });
     mkdirSync(join(home, ".claude"));
-    for (const args of [["help"], ["list"], ["tier"], ["models"], ["validate"], ["list", "--agent", "claude"]]) {
+    for (const args of [["help"], ["list"], ["compose"], ["pack", "list"], ["tier"], ["models"], ["validate"], ["list", "--agent", "claude"]]) {
       const result = runResult(args, { env: { HOME: home } });
       assert.equal(result.status, 0, `${args[0]} failed: ${result.stderr}`);
       assert.doesNotMatch(result.stderr, /both Pi and Claude Code/);
@@ -305,7 +305,23 @@ test("user-scope lifecycle supports partial disable and clean discovery removal"
   }
 });
 
+test("pack use exposes an exclusive detective preview switch", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "staffed-pack-use-"));
+  const home = tempHome("staffed-pack-use-home-");
+  try {
+    const output = run(["pack", "use", "detective", "--agent", "pi", "--scope", "project"], { cwd, env: { HOME: home } });
+    assert.match(output, /active pack detective \(experimental preview\)/);
+    const manifest = JSON.parse(readFileSync(join(cwd, ".pi", "agents", ".staffed.json"), "utf8"));
+    assert.equal(manifest.pack, "detective");
+    assert.equal(existsSync(join(cwd, ".pi", "agents", "investigator.md")), true);
+    assert.equal(existsSync(join(cwd, ".pi", "agents", "builder.md")), false);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 test("CLI validation reports the complete clean roster and model config", () => {
   const output = run(["validate"]);
-  assert.equal(output, "11 personas\n0 problems\n");
+  assert.equal(output, "15 personas across 2 packs\n0 problems\n");
 });

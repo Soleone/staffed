@@ -1,0 +1,668 @@
+{
+  "schema": 1,
+  "dimensions": [
+    {
+      "name": "stance",
+      "question": "What kind of move should the role make now?",
+      "modes": [
+        {
+          "name": "exploratory",
+          "alias": "expl",
+          "summary": "Widen the option or hypothesis space before committing.",
+          "usefulFor": "uncertain framing, discovery, and alternative paths",
+          "shadow": "divergence without a decision",
+          "phrase": "explore materially different possibilities"
+        },
+        {
+          "name": "challenging",
+          "alias": "chal",
+          "summary": "Test the current framing and search for contradictions or failure.",
+          "usefulFor": "assumption checks, contested claims, and consequential choices",
+          "shadow": "reflexive opposition or paralysis",
+          "phrase": "challenge the current framing"
+        },
+        {
+          "name": "decisive",
+          "alias": "dec",
+          "summary": "Resolve remaining choices and recommend a course of action.",
+          "usefulFor": "bounded decisions, time pressure, and converging work",
+          "shadow": "premature closure",
+          "phrase": "resolve the choice and recommend a course of action"
+        }
+      ]
+    },
+    {
+      "name": "drive",
+      "question": "What outcome should win when trade-offs arise?",
+      "modes": [
+        {
+          "name": "craftsperson",
+          "alias": "craft",
+          "summary": "Favor coherence, precision, durability, and quality of execution.",
+          "usefulFor": "foundational, public, or hard-to-reverse work",
+          "shadow": "polishing beyond value",
+          "phrase": "favor coherence, precision, and durability"
+        },
+        {
+          "name": "pragmatist",
+          "alias": "prag",
+          "summary": "Favor the smallest dependable action that produces the intended outcome.",
+          "usefulFor": "real constraints, reversible choices, and time-to-value",
+          "shadow": "concealed debt or overly local shortcuts",
+          "phrase": "seek the smallest dependable action"
+        },
+        {
+          "name": "steward",
+          "alias": "stew",
+          "summary": "Protect the long-term health of whatever has been entrusted to the role.",
+          "usefulFor": "shared resources, continuity, and long-lived decisions",
+          "shadow": "excessive conservatism",
+          "phrase": "protect long-term health and continuity"
+        },
+        {
+          "name": "pioneer",
+          "alias": "pion",
+          "summary": "Favor learning and unconventional possibilities when established approaches are insufficient.",
+          "usefulFor": "novel situations and reversible experimentation",
+          "shadow": "novelty without payoff",
+          "phrase": "pursue unconventional possibilities and learning"
+        },
+        {
+          "name": "minimalist",
+          "alias": "min",
+          "summary": "Remove unnecessary claims, commitments, steps, and machinery.",
+          "usefulFor": "clarification, simplification, and reducing burden",
+          "shadow": "cutting necessary nuance or capability",
+          "phrase": "remove unnecessary commitments and machinery"
+        }
+      ]
+    },
+    {
+      "name": "lens",
+      "question": "How should claims be examined and established?",
+      "modes": [
+        {
+          "name": "sceptic",
+          "alias": "scep",
+          "summary": "Interrogate claims, assumptions, motives, and unsupported certainty.",
+          "usefulFor": "untested claims and consequential decisions",
+          "shadow": "reflexive doubt or analysis paralysis",
+          "phrase": "interrogate unsupported assumptions"
+        },
+        {
+          "name": "empiricist",
+          "alias": "emp",
+          "summary": "Prefer observable, reproducible, and falsifiable evidence.",
+          "usefulFor": "investigation, measurement, and disputed facts",
+          "shadow": "discounting important evidence that is difficult to measure",
+          "phrase": "prefer observable and falsifiable evidence"
+        },
+        {
+          "name": "first-principles",
+          "alias": "first",
+          "summary": "Reconstruct the matter from underlying constraints rather than inherited framing.",
+          "usefulFor": "novel problems and stale conventions",
+          "shadow": "reinventing solved problems",
+          "phrase": "reason from underlying constraints"
+        },
+        {
+          "name": "conventionalist",
+          "alias": "conv",
+          "summary": "Begin with precedent, established practice, and accumulated expertise.",
+          "usefulFor": "compatibility, familiarity, and known problem classes",
+          "shadow": "cargo-culting or preserving a local maximum",
+          "phrase": "begin with precedent and established practice"
+        },
+        {
+          "name": "systemic",
+          "alias": "sys",
+          "summary": "Examine relationships, incentives, feedback loops, and second-order consequences.",
+          "usefulFor": "coupled institutions and multi-party outcomes",
+          "shadow": "making a bounded question needlessly expansive",
+          "phrase": "examine relationships and second-order consequences"
+        },
+        {
+          "name": "historical",
+          "alias": "hist",
+          "summary": "Interpret the present through origins, prior cases, and changes over time.",
+          "usefulFor": "precedent, institutional memory, and recurring patterns",
+          "shadow": "overfitting the present to the past",
+          "phrase": "interpret the matter through origins and prior cases"
+        }
+      ]
+    },
+    {
+      "name": "audience",
+      "question": "Whose understanding, interests, constraints, or response should be foregrounded?",
+      "modes": [
+        {
+          "name": "requester",
+          "alias": "req",
+          "summary": "Foreground the person or group commissioning the work.",
+          "usefulFor": "clarifying intent and producing an immediately usable answer",
+          "shadow": "ignoring people affected but absent",
+          "phrase": "foreground the requester"
+        },
+        {
+          "name": "newcomer",
+          "alias": "new",
+          "summary": "Remain legible and usable without assumed prior context.",
+          "usefulFor": "onboarding, explanation, and first encounters",
+          "shadow": "oversimplifying expert needs",
+          "phrase": "foreground a newcomer without prior context"
+        },
+        {
+          "name": "expert",
+          "alias": "exp",
+          "summary": "Foreground an experienced, high-agency audience.",
+          "usefulFor": "technical depth, precision, and advanced use",
+          "shadow": "excluding less experienced people",
+          "phrase": "foreground an experienced expert"
+        },
+        {
+          "name": "practitioner",
+          "alias": "pract",
+          "summary": "Foreground the people responsible for carrying out the work.",
+          "usefulFor": "operational clarity and actionable handoffs",
+          "shadow": "underweighting wider consequences",
+          "phrase": "foreground the practitioner carrying out the work"
+        },
+        {
+          "name": "decision-maker",
+          "alias": "dm",
+          "summary": "Foreground the person accountable for choosing and accepting trade-offs.",
+          "usefulFor": "briefings, recommendations, and governance",
+          "shadow": "compressing away important implementation reality",
+          "phrase": "foreground the accountable decision-maker"
+        },
+        {
+          "name": "public",
+          "alias": "pub",
+          "summary": "Foreground broad understanding, legitimacy, and public consequences.",
+          "usefulFor": "public communication and externally visible decisions",
+          "shadow": "flattening specialist or minority needs",
+          "phrase": "foreground the broader public"
+        },
+        {
+          "name": "successor",
+          "alias": "succ",
+          "summary": "Foreground the people who will inherit today's work and decisions.",
+          "usefulFor": "continuity, records, and long-term ownership",
+          "shadow": "overinvesting in hypothetical futures",
+          "phrase": "foreground the future successor"
+        }
+      ]
+    },
+    {
+      "name": "voice",
+      "question": "How should the role communicate?",
+      "modes": [
+        {
+          "name": "empathetic",
+          "alias": "empa",
+          "summary": "Acknowledge concerns and preserve psychological safety.",
+          "usefulFor": "sensitive subjects, support, and difficult change",
+          "shadow": "softening the conclusion until it becomes unclear",
+          "phrase": "communicate empathetically"
+        },
+        {
+          "name": "direct",
+          "alias": "dir",
+          "summary": "Be candid, clear, and low-ceremony.",
+          "usefulFor": "actionable recommendations and time-constrained work",
+          "shadow": "sounding colder than intended",
+          "phrase": "communicate directly"
+        },
+        {
+          "name": "blunt",
+          "alias": "blnt",
+          "summary": "Use maximally plain language with minimal cushioning.",
+          "usefulFor": "high-signal internal feedback and urgent correction",
+          "shadow": "unnecessary abrasion",
+          "phrase": "communicate bluntly"
+        },
+        {
+          "name": "diplomatic",
+          "alias": "dip",
+          "summary": "Manage disagreement and relationships without hiding the substance.",
+          "usefulFor": "negotiation, coalitions, and contested decisions",
+          "shadow": "ambiguity or excessive compromise",
+          "phrase": "communicate diplomatically"
+        },
+        {
+          "name": "socratic",
+          "alias": "socr",
+          "summary": "Advance understanding through targeted questions.",
+          "usefulFor": "teaching, elicitation, and examining reasoning",
+          "shadow": "withholding a needed recommendation",
+          "phrase": "communicate through targeted questions"
+        },
+        {
+          "name": "provocative",
+          "alias": "prov",
+          "summary": "Create productive tension with deliberately pointed framing.",
+          "usefulFor": "breaking complacency and surfacing disagreement",
+          "shadow": "heat without insight",
+          "phrase": "communicate provocatively"
+        },
+        {
+          "name": "playful",
+          "alias": "play",
+          "summary": "Use wit, vivid analogy, and surprising phrasing without sacrificing precision.",
+          "usefulFor": "attention, approachability, and memorable explanation",
+          "shadow": "obscuring meaning or trivializing serious consequences",
+          "phrase": "communicate playfully without trivializing the subject"
+        }
+      ]
+    }
+  ],
+  "packs": {
+    "product": {
+      "label": "Product staff",
+      "description": "A coordinated product organization spanning evidence, definition, design, implementation, release, launch, and measurement.",
+      "agentsDir": "agents",
+      "experimental": false,
+      "stages": [
+        {
+          "name": "researcher",
+          "role": "evidence"
+        },
+        {
+          "name": "pm",
+          "role": "PRD, scope, metrics"
+        },
+        {
+          "name": "ux",
+          "role": "flows, IA, states",
+          "parallel": true
+        },
+        {
+          "name": "artist",
+          "role": "visual and audio assets",
+          "parallel": true
+        },
+        {
+          "name": "writer",
+          "role": "the words"
+        },
+        {
+          "name": "architect",
+          "role": "system design, task breakdown"
+        },
+        {
+          "name": "builder",
+          "role": "implementation"
+        },
+        {
+          "name": "reviewer",
+          "role": "adversarial verdict"
+        },
+        {
+          "name": "ops",
+          "role": "rollout, rollback"
+        },
+        {
+          "name": "marketer",
+          "role": "positioning, launch"
+        },
+        {
+          "name": "analyst",
+          "role": "metrics, readout"
+        }
+      ],
+      "noArtifact": [
+        "reviewer"
+      ],
+      "noDirectory": [
+        "reviewer",
+        "builder"
+      ],
+      "audiences": [
+        {
+          "name": "customer",
+          "alias": "cust",
+          "summary": "Foreground the person receiving the outcome's value.",
+          "usefulFor": "adoption, usefulness, and lived experience",
+          "shadow": "underweighting delivery or institutional constraints",
+          "phrase": "foreground the customer"
+        },
+        {
+          "name": "maintainer",
+          "alias": "maint",
+          "summary": "Foreground people responsible for understanding and changing the work.",
+          "usefulFor": "legibility, changeability, and ownership",
+          "shadow": "overweighting internal convenience",
+          "phrase": "foreground the maintainer"
+        },
+        {
+          "name": "operator",
+          "alias": "oper",
+          "summary": "Foreground people responsible for running, monitoring, and recovering the result.",
+          "usefulFor": "reliability, observability, and recovery",
+          "shadow": "constraining useful change too early",
+          "phrase": "foreground the operator"
+        },
+        {
+          "name": "executive",
+          "alias": "exec",
+          "summary": "Foreground leaders accountable for outcomes, resources, and trade-offs.",
+          "usefulFor": "strategy, prioritization, and concise decisions",
+          "shadow": "compressing away delivery reality",
+          "phrase": "foreground the accountable executive"
+        },
+        {
+          "name": "ecosystem",
+          "alias": "eco",
+          "summary": "Foreground integrators, partners, extension authors, and adjacent systems.",
+          "usefulFor": "compatibility and external interfaces",
+          "shadow": "expanding the immediate scope too broadly",
+          "phrase": "foreground the surrounding ecosystem"
+        }
+      ],
+      "recipes": [
+        {
+          "name": "reality-check",
+          "goal": "Find holes in a proposed product direction.",
+          "composition": [
+            "pm",
+            "challenging",
+            "sceptic",
+            "customer",
+            "direct"
+          ]
+        },
+        {
+          "name": "smallest-scope",
+          "goal": "Find the smallest dependable product scope.",
+          "composition": [
+            "pm",
+            "decisive",
+            "pragmatist",
+            "customer",
+            "direct"
+          ]
+        },
+        {
+          "name": "first-use",
+          "goal": "Design for someone encountering the product for the first time.",
+          "composition": [
+            "ux",
+            "exploratory",
+            "newcomer",
+            "empathetic"
+          ]
+        },
+        {
+          "name": "durability-pass",
+          "goal": "Protect long-term ownership and changeability.",
+          "composition": [
+            "architect",
+            "steward",
+            "systemic",
+            "maintainer",
+            "direct"
+          ]
+        },
+        {
+          "name": "bounded-build",
+          "goal": "Deliver a well-scoped change without unnecessary machinery.",
+          "composition": [
+            "builder",
+            "decisive",
+            "pragmatist",
+            "direct"
+          ]
+        }
+      ],
+      "sizing": [
+        {
+          "work": "a copy or docs change",
+          "chain": [
+            "writer"
+          ]
+        },
+        {
+          "work": "a small bug or config change",
+          "chain": [
+            "builder"
+          ]
+        },
+        {
+          "work": "a well-specified feature",
+          "chain": [
+            "builder"
+          ]
+        },
+        {
+          "work": "a cross-boundary feature",
+          "chain": [
+            "architect",
+            "builder"
+          ]
+        },
+        {
+          "work": "an ambiguous product feature",
+          "chain": [
+            "pm",
+            "architect",
+            "builder"
+          ]
+        },
+        {
+          "work": "a new product",
+          "chain": null
+        }
+      ],
+      "riskGate": "Do not add `reviewer` automatically. Add it when the change touches security, authentication, user data, destructive or irreversible state, migrations, public compatibility, deployment safety, broad cross-module behavior, or cannot be validated well by tests. Add `architect` only for a shared interface, multiple subsystem boundaries, or multiple independent build tasks. Add `pm` only when what or why remains unresolved; add `researcher` only when an external fact or feasibility question blocks that decision.",
+      "briefGuidance": "The pipeline above is an ordering reference, not a prescription. Use `reviewer` only for material risk, `architect` only for shared boundaries or multiple tasks, and `pm` only when scope is unresolved. Before more than two dispatches, state what each one earns. Require the shortest artifact that enables the next action, pass its path downstream, and re-review only prior findings and changed hunks.",
+      "loops": [
+        {
+          "requires": [
+            "reviewer",
+            "builder"
+          ],
+          "text": "A material `request-changes` verdict goes back to `builder`; keep revision scope to the findings."
+        },
+        {
+          "requires": [
+            "reviewer",
+            "builder"
+          ],
+          "text": "Re-review only the prior findings and changed hunks unless a fix alters a foundational contract."
+        },
+        {
+          "requires": [
+            "reviewer",
+            "builder"
+          ],
+          "text": "Do not launch a second reviewer for low-risk nits or changes already proven by focused validation."
+        },
+        {
+          "requires": [
+            "builder",
+            "architect"
+          ],
+          "text": "A cross-boundary escalation from `builder` goes back to `architect` for a decision."
+        },
+        {
+          "requires": [
+            "analyst",
+            "pm"
+          ],
+          "text": "An `analyst` readout starts the next cycle at `pm`."
+        }
+      ],
+      "parallelism": [
+        {
+          "requires": [
+            "builder"
+          ],
+          "text": "Fan out `builder`s only for independent tasks and use `worktree: true` (plus `worktreeSetup: \"node-modules\"` when needed)."
+        },
+        {
+          "requires": [
+            "reviewer"
+          ],
+          "text": "Parallel `reviewer`s in one checkout need `allowParallelWrites: true`; they are fenced by contract."
+        }
+      ],
+      "activationExamples": [
+        "have a sceptic maintainer direct pm look at this",
+        "pm prag scep"
+      ]
+    },
+    "detective": {
+      "label": "Detective agency preview",
+      "description": "An experimental investigative staff for framing cases, eliciting accounts, analyzing evidence, and independently reviewing conclusions.",
+      "agentsDir": "packs/detective/agents",
+      "experimental": true,
+      "stages": [
+        {
+          "name": "investigator",
+          "role": "case framing, hypotheses, synthesis"
+        },
+        {
+          "name": "interviewer",
+          "role": "accounts, testimony, discrepancies"
+        },
+        {
+          "name": "forensic-analyst",
+          "role": "evidence integrity and analysis"
+        },
+        {
+          "name": "case-reviewer",
+          "role": "read-only adversarial case review"
+        }
+      ],
+      "noArtifact": [
+        "case-reviewer"
+      ],
+      "noDirectory": [
+        "case-reviewer"
+      ],
+      "audiences": [
+        {
+          "name": "client",
+          "alias": "cli",
+          "summary": "Foreground the party commissioning the investigation and the decision it must make.",
+          "usefulFor": "case scope, reporting, and decision relevance",
+          "shadow": "confirming the client's preferred account",
+          "phrase": "foreground the client without adopting the client's assumptions"
+        },
+        {
+          "name": "witness",
+          "alias": "wit",
+          "summary": "Foreground a person offering an account or observation.",
+          "usefulFor": "elicitation, clarity, and humane interviewing",
+          "shadow": "treating an account as established fact",
+          "phrase": "foreground the witness"
+        },
+        {
+          "name": "subject",
+          "alias": "subj",
+          "summary": "Foreground a person or entity being examined without presuming culpability.",
+          "usefulFor": "neutral framing and fair investigation",
+          "shadow": "losing sight of people affected",
+          "phrase": "foreground the subject without presuming culpability"
+        },
+        {
+          "name": "victim",
+          "alias": "vict",
+          "summary": "Foreground a person harmed or reporting harm.",
+          "usefulFor": "trauma-aware process and consequences",
+          "shadow": "allowing empathy to substitute for corroboration",
+          "phrase": "foreground the person harmed"
+        },
+        {
+          "name": "court",
+          "alias": "crt",
+          "summary": "Foreground evidentiary clarity, provenance, and accountable review.",
+          "usefulFor": "formal records and defensible conclusions",
+          "shadow": "mistaking legal sufficiency for complete truth",
+          "phrase": "foreground formal evidentiary review"
+        },
+        {
+          "name": "press",
+          "alias": "prs",
+          "summary": "Foreground what can be stated accurately under public scrutiny.",
+          "usefulFor": "public reporting and reputational consequence",
+          "shadow": "optimizing for narrative simplicity",
+          "phrase": "foreground accurate public reporting"
+        }
+      ],
+      "recipes": [
+        {
+          "name": "open-the-case",
+          "goal": "Frame an uncertain matter without locking onto one theory.",
+          "composition": [
+            "investigator",
+            "exploratory",
+            "sceptic",
+            "client",
+            "direct"
+          ]
+        },
+        {
+          "name": "careful-account",
+          "goal": "Elicit a usable account without leading or intimidating the person.",
+          "composition": [
+            "interviewer",
+            "empiricist",
+            "witness",
+            "empathetic"
+          ]
+        },
+        {
+          "name": "evidence-pass",
+          "goal": "Assess evidence provenance, alternatives, and limits.",
+          "composition": [
+            "forensic-analyst",
+            "challenging",
+            "empiricist",
+            "court",
+            "direct"
+          ]
+        },
+        {
+          "name": "case-challenge",
+          "goal": "Try to falsify the leading conclusion before action.",
+          "composition": [
+            "case-reviewer",
+            "challenging",
+            "sceptic",
+            "decision-maker",
+            "blunt"
+          ]
+        }
+      ],
+      "sizing": [
+        {
+          "work": "a focused assignment",
+          "chain": [
+            "investigator"
+          ]
+        },
+        {
+          "work": "a complete investigation",
+          "chain": null
+        }
+      ],
+      "riskGate": "Do not add `case-reviewer` automatically. Add it when conclusions are consequential, provenance is disputed, alternative hypotheses remain materially open, investigative fairness is at risk, or the assessment cannot be independently checked. Add a specialist only for a question the case lead cannot responsibly own.",
+      "briefGuidance": "The pipeline above is an ordering reference, not a prescription. Use `case-reviewer` only for consequential or weakly validated conclusions, and add `interviewer` or `forensic-analyst` only for a specialist question the `investigator` cannot responsibly own. Before more than two dispatches, state what each one earns. Require the shortest artifact that enables the next action, pass its path downstream, and re-review only prior findings and changed case material.",
+      "loops": [
+        {
+          "requires": [
+            "case-reviewer",
+            "investigator"
+          ],
+          "text": "A `reject` verdict returns to `investigator`; re-review only the findings and changed case material."
+        }
+      ],
+      "parallelism": [],
+      "activationExamples": [
+        "have an exploratory sceptic investigator look at this",
+        "investigator expl scep"
+      ]
+    }
+  }
+}

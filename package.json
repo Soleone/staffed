@@ -1,7 +1,7 @@
 {
   "name": "staffed",
   "version": "1.3.0",
-  "description": "Staff any project with coordinated subagent roles. Includes eleven product personas spanning research, definition, design, implementation, release, launch, and measurement, with no runtime or dependencies.",
+  "description": "Compose and run coordinated subagent staff packs with progressive discovery, portable Markdown personas, and no runtime or dependencies.",
   "keywords": [
     "pi-agents",
     "subagent",
@@ -42,6 +42,8 @@
   },
   "files": [
     "agents",
+    "packs",
+    "catalog.json",
     "src",
     "bin",
     "models.json",

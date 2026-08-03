@@ -1,19 +1,19 @@
 # Staffed
 
-Staff any project with coordinated subagent roles. The included product staff covers
-research, product definition, UX, copy, visual and audio design, architecture,
-implementation, review, release, launch, and measurement.
+Staff any project with coordinated subagent roles. Staffed ships a stable product staff
+covering research through measurement and an experimental detective-agency preview for
+investigation, interviewing, forensic analysis, and independent case review.
 
 It aims to be the simplest, lightest way to run a real product pipeline through agents:
 **there is no runtime.** No orchestration engine, no graph to define, no framework to
 adopt, no server, no dependencies, no build step, and nothing written into files you own.
-Eleven markdown personas land in a directory your agent already reads, a generated skill
-tells it they are there and when to reach for them, and the agent session you already
-have does the orchestrating. One command sets it up, one command removes it.
+The active staff pack's Markdown personas land in a directory your agent already reads,
+a generated skill tells it they are there and when to reach for them, and the agent
+session you already have does the orchestrating. One command sets it up, one command removes it.
 
-That leaves the personas as the entire product — about 600 lines of prose, and that is
-the point: what makes this work is what the personas *say*, not machinery wrapped around
-them. Your session decomposes a goal, dispatches personas, and validates what each
+That leaves the personas and their compact composition catalog as the product, and that
+is the point: what makes this work is what the personas *say*, not machinery wrapped
+around them. Your session decomposes a goal, dispatches personas, and validates what each
 returns. Three properties keep a long pipeline from collapsing back into one agent doing
 everything:
 
@@ -30,7 +30,8 @@ everything:
 ## Install
 
 ```bash
-pnpm dlx staffed enable                   # inherit the parent session model
+pnpm dlx staffed enable                   # product pack; inherit the parent model
+pnpm dlx staffed enable --pack detective # switch to the experimental detective preview
 pnpm dlx staffed enable --profile openai  # cost/time-oriented OpenAI defaults
 pnpm dlx staffed status                   # exact stamped model, or inherited/legacy
 # npx staffed ... works too
@@ -38,8 +39,8 @@ pnpm dlx staffed status                   # exact stamped model, or inherited/le
 
 That does two things, both required:
 
-1. renders all eleven personas into `~/.pi/agent/agents/`
-2. installs a **`staffed` skill** into `~/.pi/agent/skills/`
+1. renders the active pack's personas into `~/.pi/agent/agents/`
+2. installs a **`staffed` skill** and lazy composition reference into `~/.pi/agent/skills/`
 
 The second one is not a nicety. `subagent` surfaces the roster only inside its error
 messages — nothing injects it into the system prompt, and the tool description does not
@@ -79,20 +80,25 @@ overwriting it. `--force` when that is what you actually want.
 | `status` | what is enabled, per-persona, plus drift and brief health |
 | `skill` | print the generated skill |
 | `brief` | print the optional AGENTS.md block; `--write` / `--remove` to apply it |
-| `list` | the roster with each persona's default model tier and effort |
+| `list [--pack name]` | a pack's roster with each persona's default model tier and effort |
+| `compose [terms...]` | browse modes/recipes or validate and explain a composition |
+| `pack list` | available staff packs |
+| `pack use <name>` | exclusively switch the active pack for this scope |
 | `tier [name]` | show tier → model + thinking, or declare one |
 | `doctor` | check configured model ids against this pi install |
 | `validate` | structural checks on the roster |
 
-Options: `--agent pi|claude|opencode` `--scope user|project` `--profile` `--model`
+Options: `--agent pi|claude|opencode` `--scope user|project` `--pack` `--profile` `--model`
 `--thinking` `--link` `--force` `--dry-run` `--brief` `--no-skill`.
 
 Agent selection is automatic when `--agent` is omitted. Staffed checks only the canonical
 home configuration directories: `~/.pi/agent` and `~/.claude`. If exactly one exists,
 it selects that agent. If both exist, pass `--agent pi` or `--agent claude`; Staffed
 will not guess. If neither exists, agent-dependent commands visibly warn and fall back
-to Pi, preserving fresh-install behavior. `help`, `list`, `tier`/`models`, and
-`validate` do not inspect the home directory.
+to Pi, preserving fresh-install behavior. `help`, `list`, `compose`, `pack list`,
+`tier`/`models`, and `validate` do not inspect the home directory. Consequently, `list`
+and `compose` are stateless catalog discovery: they show the product catalog unless
+`--pack` is passed. Use `status` to inspect the pack actually installed in a scope.
 
 `--agent` chooses rendering and filesystem destinations. `--profile` independently
 chooses model frontmatter; neither option infers the other. For example,
@@ -114,7 +120,66 @@ cannot deliver personas.** A pi package contributes extensions, skills, prompts 
 themes; there is no `agents` key. Placing files in one of those two directories is the
 entire mechanism.
 
-## The roster
+## Persona composition
+
+A **composition** is one role plus optional behavioral **modifiers**. A modifier is a
+selected **mode** from a configurable **dimension**. Staffed provides five optional
+dimensions: stance, drive, lens, audience, and voice. Effort, model tier, permissions,
+safety, and output contracts are controls, not modifiers, and always take precedence.
+
+You do not need to learn this vocabulary before using Staffed. Plain roles remain the
+default:
+
+```text
+Staff this project.
+Have the PM look at this.
+```
+
+Add only the terms that materially change the result:
+
+```text
+Have a sceptic maintainer direct PM look at this.
+pnpm dlx staffed compose pm prag scep maint dir
+```
+
+The latter resolves to a pragmatic PM using a sceptical lens, foregrounding maintainers,
+and speaking directly. Canonical names and declared short aliases are matched exactly
+(case-insensitively); arbitrary prefixes are not accepted. One mode maximum is allowed
+per dimension.
+
+```bash
+pnpm dlx staffed compose                 # compact vocabulary and an example
+pnpm dlx staffed compose recipes         # outcome-oriented recipes
+pnpm dlx staffed compose lens            # browse one dimension
+pnpm dlx staffed compose sceptic         # explain one mode and its failure mode
+pnpm dlx staffed compose pm prag scep    # validate and explain a composition
+```
+
+The generated `SKILL.md` contains only names, aliases, sparse-selection rules, and a few
+recipes. Detailed definitions live in `references/composition.md` and are loaded only
+when a modifier is used, options are requested, or the orchestrator must choose a
+composition. A composed dispatch carries the canonical composition and each selected
+mode's concise behavior into the persona task; the receipt alone is not the behavior.
+See [Composition](docs/composition.md) for the complete model.
+
+## Staff packs
+
+Many packs may be available, but exactly one is active in an install scope. Product is
+the built-in default and existing commands retain their product behavior. Switching is
+explicit and exclusive: Staffed preflights local drift and foreign targets before
+removing the old owned roster and installing the new one.
+
+```bash
+pnpm dlx staffed pack list
+pnpm dlx staffed pack use detective --scope project
+pnpm dlx staffed status
+```
+
+Core stance, drive, lens, audience, and voice modes apply across organizations. A pack
+adds its roles, domain audiences, workflow, and recipes. The detective pack is an
+experimental preview; see [Detective preview](docs/detective-pack.md).
+
+## The product roster
 
 | Persona | Owns | Artifact | Returns |
 |---|---|---|---|

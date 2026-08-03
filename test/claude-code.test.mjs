@@ -145,7 +145,10 @@ test("discovery failure occurs before forced agent replacement", () => {
   try {
     const agent = join(cwd, ".claude", "agents", "builder.md"); mkdirSync(dirname(agent), { recursive: true }); writeFileSync(agent, "foreign agent");
     const blockedParent = join(cwd, ".claude", "skills", "staffed"); mkdirSync(dirname(blockedParent), { recursive: true }); writeFileSync(blockedParent, "not a directory");
-    assert.throws(() => enablePrepared({ host: "claude", scope: "project", cwd, only: ["builder"], force: true }), /ENOTDIR/);
+    assert.throws(
+      () => enablePrepared({ host: "claude", scope: "project", cwd, only: ["builder"], force: true }),
+      /symlink or non-directory ancestor/,
+    );
     assert.equal(readFileSync(agent, "utf8"), "foreign agent");
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });

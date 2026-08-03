@@ -10,9 +10,9 @@ export const AGENTS_DIR = join(ROOT, "agents");
 export const TIERS = ["fast", "balanced", "strong", "deep"];
 export const EFFORTS = ["low", "medium", "high"];
 
-// reviewer writes nothing; builder's artifact is the code. Neither owns a directory.
-const NO_ARTIFACT = new Set(["reviewer"]);
-const NO_DIRECTORY = new Set(["reviewer", "builder"]);
+// Product defaults. Other staff packs pass their own exceptions to validate().
+const PRODUCT_NO_ARTIFACT = ["reviewer"];
+const PRODUCT_NO_DIRECTORY = ["reviewer", "builder"];
 
 /** Split a persona file into frontmatter text and body. */
 function split(text) {
@@ -89,9 +89,11 @@ export function loadPersonas(dir = AGENTS_DIR) {
 }
 
 /** Structural checks. Returns an array of human-readable problems. */
-export function validate(personas, stages) {
+export function validate(personas, stages, { noArtifact = PRODUCT_NO_ARTIFACT, noDirectory = PRODUCT_NO_DIRECTORY } = {}) {
   const problems = [];
   const names = personas.map((p) => p.name);
+  const noArtifactSet = new Set(noArtifact);
+  const noDirectorySet = new Set(noDirectory);
 
   // The generated brief walks a canonical stage order; it must cover the roster exactly,
   // or a persona would be installed that no brief ever tells the orchestrator to use.
@@ -110,13 +112,13 @@ export function validate(personas, stages) {
     if (p.meta.model) at("has a pinned model — pinning belongs at install time, not in source");
     if (!/^# Output \(always in this structure, unless escalating\)/m.test(p.body)) at("no output contract");
     if (!/^# Effort and output budget/m.test(p.body)) at("no effort and output budget");
-    if (!NO_ARTIFACT.has(p.name) && !/^# Artifact/m.test(p.body)) at("no # Artifact section");
+    if (!noArtifactSet.has(p.name) && !/^# Artifact/m.test(p.body)) at("no # Artifact section");
 
-    if (!NO_DIRECTORY.has(p.name) && !p.body.includes(`artifacts/${p.name}/`)) {
+    if (!noDirectorySet.has(p.name) && !p.body.includes(`artifacts/${p.name}/`)) {
       at(`never references its own artifacts/${p.name}/`);
     }
     for (const other of names) {
-      if (other === p.name || NO_DIRECTORY.has(other)) continue;
+      if (other === p.name || noDirectorySet.has(other)) continue;
       if (new RegExp(`writ\\w+[^.]{0,40}artifacts/${other}/`).test(p.body)) {
         at(`appears to write into artifacts/${other}/`);
       }

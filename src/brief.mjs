@@ -1,19 +1,10 @@
+import { DEFAULT_PACK, resolvePack } from "./packs.mjs";
+
 const START = "<!-- staffed:start -->";
 const END = "<!-- staffed:end -->";
 
-export const STAGES = [
-  { name: "researcher", role: "evidence" },
-  { name: "pm", role: "PRD, scope, metrics" },
-  { name: "ux", role: "flows, IA, states", parallel: true },
-  { name: "artist", role: "visual + audio assets", parallel: true },
-  { name: "writer", role: "the words" },
-  { name: "architect", role: "system design, task breakdown" },
-  { name: "builder", role: "one task; escalates cross-boundary changes" },
-  { name: "reviewer", role: "read-only, adversarial verdict" },
-  { name: "ops", role: "rollout, rollback" },
-  { name: "marketer", role: "positioning, launch" },
-  { name: "analyst", role: "metrics, readout" },
-];
+// Backward-compatible export for callers and tests that mean the built-in product roster.
+export const STAGES = resolvePack(DEFAULT_PACK).stages;
 
 function chain(stages) {
   const parts = [];
@@ -36,10 +27,11 @@ function wrap(text) {
   return out.join("\n");
 }
 
-export function generateBrief({ hostKey = "pi", enabled }) {
+export function generateBrief({ hostKey = "pi", enabled, pack: packName = DEFAULT_PACK, catalog }) {
+  const pack = resolvePack(packName, catalog);
   const set = new Set(enabled);
-  const stages = STAGES.filter((s) => set.has(s.name));
-  const partial = stages.length < STAGES.length;
+  const stages = pack.stages.filter((s) => set.has(s.name));
+  const partial = stages.length < pack.stages.length;
   const claude = hostKey === "claude";
   const actor = claude ? "Agent" : "subagent";
   const activation = claude
@@ -48,17 +40,11 @@ export function generateBrief({ hostKey = "pi", enabled }) {
   const body = [
     "## Staffed", "",
     wrap(
-      activation + `This project has a product org available as ${actor}s. You are the orchestrator: ` +
+      activation + `This project has the ${pack.label}${pack.experimental ? " (experimental)" : ""} available as ${actor}s. You are the orchestrator: ` +
       "default to one persona, add a stage only for a named uncertainty or material risk, validate " +
       "compact outputs, and loop back only on material failures.",
     ), "", wrap(`Pipeline: ${chain(stages)}.`), "",
-    wrap(
-      "The pipeline above is an ordering reference, not a prescription. Use `reviewer` only for " +
-      "material risk, `architect` only for shared boundaries or multiple tasks, and `pm` only " +
-      "when scope is unresolved. Before more than two dispatches, state what each one earns. " +
-      "Require the shortest artifact that enables the next action, pass its path downstream, " +
-      "and re-review only prior findings and changed hunks.",
-    ), "",
+    wrap(pack.briefGuidance), "",
     wrap(
       "Start every dispatch at effort `low` unless the user requested otherwise or approved an " +
       "escalation, and state the effort in the task. Low means the shortest credible pass. Stop " +
@@ -69,7 +55,7 @@ export function generateBrief({ hostKey = "pi", enabled }) {
     ),
   ];
   if (partial) {
-    const missing = STAGES.filter((s) => !set.has(s.name)).map((s) => s.name);
+    const missing = pack.stages.filter((s) => !set.has(s.name)).map((s) => s.name);
     body.push("", wrap(`Only these personas are enabled: ${stages.map((s) => s.name).join(", ")}. Not available: ${missing.join(", ")} — cover those stages yourself or skip them.`));
   }
   return `${START}\n${body.join("\n")}\n${END}`;

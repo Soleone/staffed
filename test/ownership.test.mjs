@@ -46,6 +46,8 @@ test("manifest records fail closed by slot and required value type", () => {
     { ...base, files: { "builder.md": { type: "copy", hash: 42 } } },
     { ...base, files: { "builder.md": { type: "link", target: null } } },
     { ...base, discovery: { skill: { type: "block", hash: "a".repeat(16) } } },
+    { ...base, discovery: { composition: { type: "copy", hash: "a".repeat(16) } } },
+    { ...base, references: { composition: { type: "block", hash: "a".repeat(16) } } },
     { ...base, discovery: { brief: { type: "copy", hash: "a".repeat(16) } } },
     { ...base, discovery: { other: { type: "copy", hash: "a".repeat(16) } } },
   ];
@@ -55,4 +57,8 @@ test("manifest records fail closed by slot and required value type", () => {
 
   const withoutDiscovery = { schema: 2, package: "staffed", host: "pi", scope: "project", files: {} };
   assert.deepEqual(normalizeManifest(withoutDiscovery, { hostKey: "pi", scope: "project" }).discovery, {});
+  const withComposition = { ...base, pack: "detective", references: { composition: { type: "copy", hash: "a".repeat(16) } } };
+  const normalized = normalizeManifest(withComposition, { hostKey: "pi", scope: "project" });
+  assert.equal(normalized.pack, "detective");
+  assert.equal(normalized.references.composition.type, "copy");
 });
