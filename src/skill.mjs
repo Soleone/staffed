@@ -173,8 +173,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     `roles: ${stages.map((stage) => `\`${stage.name}\``).join(", ")}`,
     "",
     wrap(
-      `Matching is case-insensitive but exact: accept only canonical names or listed aliases, never arbitrary prefixes. If a modifier appears, the user asks about options, or you must select a composition, read \`references/composition.md\` before dispatching. Otherwise do not load it. Before dispatch, state a one-line receipt such as \`${receiptExample}\` A receipt is not enough: the persona task itself must include \`Composition:\` with canonical role and mode names plus one concise \`Behavior:\` line for every selected mode, copied from that mode's \`Dispatch behavior\` in the reference. Explicitly tell the persona that role scope, truth, correctness, safety, effort, model tier, permissions, and output contracts take precedence over every modifier.`,
-
+      `Matching is case-insensitive but exact: accept only canonical names or listed aliases, never arbitrary prefixes. If a modifier appears, the user asks about options, or you must select a composition, read \`references/composition.md\` before dispatching. Otherwise do not load it. Before dispatch, state a one-line receipt such as \`${receiptExample}\` Repeat that exact canonical receipt in the final response so non-interactive callers retain it. A receipt is not enough: the persona task itself must include \`Composition:\` with canonical role and mode names plus one concise \`Behavior:\` line for every selected mode, copied from that mode's \`Dispatch behavior\` in the reference. Explicitly tell the persona that role scope, truth, correctness, safety, effort, model tier, permissions, and output contracts take precedence over every modifier.`,
     ),
     "",
     "Recipes:",
@@ -213,6 +212,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     "",
     wrap(
       "Each artifact-owning persona writes to `artifacts/<agent>/index.md` and returns that path. " +
+        (claude ? "" : "For a canonical artifact dispatch, make one foreground `subagent` call with `output: false`; never set the tool's `output` path, because that path becomes authoritative and relocates the artifact under the subagent runtime. Do not revive or redispatch a completed persona merely to repair an output path. ") +
         "Pass paths downstream, never the full document — that keeps context flat across a long " +
         "pipeline." +
         (artifactExceptions.length ? ` Exceptions: ${artifactExceptions.join("; ")}.` : ""),
@@ -258,7 +258,7 @@ export function generateCompositionReference({ pack: packName = DEFAULT_PACK, pe
   lines.push("## Recipes", "");
   const roleNames = new Set(roster.map((persona) => persona.name));
   for (const recipe of pack.recipes.filter((item) => item.composition.some((token) => roleNames.has(token)))) lines.push(`### ${recipe.name}`, "", recipe.goal, "", recipe.composition.map((token) => `\`${token}\``).join(" + "), "");
-  lines.push("## Composition rules", "", "- Matching is case-insensitive exact-token matching against canonical names and declared aliases.", "- One role is required; one mode maximum per optional dimension.", "- A modifier changes approach, not authority, truth, correctness, or scope.", "- Give a one-line composition receipt before dispatch.", "- Put the canonical composition and every selected mode's Dispatch behavior in the persona task; role, safety, controls, and output contracts always take precedence.", "");
+  lines.push("## Composition rules", "", "- Matching is case-insensitive exact-token matching against canonical names and declared aliases.", "- One role is required; one mode maximum per optional dimension.", "- A modifier changes approach, not authority, truth, correctness, or scope.", "- Give a one-line canonical composition receipt before dispatch and repeat it in the final response.", "- Put the canonical composition and every selected mode's Dispatch behavior in the persona task; role, safety, controls, and output contracts always take precedence.", "");
   return lines.join("\n");
 }
 

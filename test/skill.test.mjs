@@ -41,6 +41,14 @@ test("generated skill requires compact outputs and targeted re-review", () => {
   assert.match(skill, /Do not launch a second reviewer for low-risk nits/);
 });
 
+test("generated Pi skill preserves canonical artifact paths and receipts", () => {
+  const skill = oneLine(generateSkill(enabled, personas));
+  assert.match(skill, /Repeat that exact canonical receipt in the final response/);
+  assert.match(skill, /one foreground `subagent` call with `output: false`/);
+  assert.match(skill, /never set the tool's `output` path/);
+  assert.match(skill, /Do not revive or redispatch a completed persona merely to repair an output path/);
+});
+
 test("generated skill defaults effort low and makes escalation explicit", () => {
   const skill = oneLine(generateSkill(enabled, personas));
   assert.match(skill, /Every dispatch starts at effort `low`/);

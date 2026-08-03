@@ -160,7 +160,8 @@ recipes. Detailed definitions live in `references/composition.md` and are loaded
 when a modifier is used, options are requested, or the orchestrator must choose a
 composition. A composed dispatch carries the canonical composition and each selected
 mode's concise behavior into the persona task; the receipt alone is not the behavior.
-See [Composition](docs/composition.md) for the complete model.
+The orchestrator repeats the canonical receipt in its final response so non-interactive
+callers retain it. See [Composition](docs/composition.md) for the complete model.
 
 ## Staff packs
 
@@ -254,8 +255,11 @@ Two properties earn the nesting:
   filesystem: write only under your own directory, read anyone's.
 
 Two intentional exceptions: `builder`'s artifact is the code, and `reviewer` writes
-nothing at all so its verdict can be routed immediately. Neither gets a directory. Pass
-a different root via `subagent`'s `output` parameter when a caller needs one.
+nothing at all so its verdict can be routed immediately. Neither gets a directory. For
+a canonical Pi artifact, the orchestrator makes one foreground `subagent` call with
+`output: false`; setting the tool's `output` path makes that alternate path authoritative
+and relocates the result. Use `output` only when a caller intentionally wants a different
+root.
 
 ## Model tiers
 

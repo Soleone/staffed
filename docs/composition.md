@@ -42,7 +42,8 @@ The generated skill carries only names, aliases, selection rules, and a few reci
 It loads its detailed `references/composition.md` only when a modifier is present,
 options are requested, or it must select a composition itself.
 
-The orchestrator returns a one-line receipt:
+The orchestrator states a one-line receipt before dispatch and repeats that exact
+canonical receipt in its final response so non-interactive callers retain it:
 
 ```text
 Dispatching pm + sceptic + maintainer + direct: challenge assumptions for maintainers and report plainly.
