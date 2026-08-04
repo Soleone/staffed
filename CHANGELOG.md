@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/Soleone/staffed/compare/v1.5.0...v1.6.0) (2026-08-04)
+
+
+### Features
+
+* remove optional brief path ([2a477a4](https://github.com/Soleone/staffed/commit/2a477a471fd764ebea3290606a377662e58858fe))
+
 ## [1.5.0](https://github.com/Soleone/staffed/compare/v1.4.0...v1.5.0) (2026-08-04)
 
 
