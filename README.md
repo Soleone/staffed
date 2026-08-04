@@ -4,7 +4,9 @@ Staff any project with coordinated subagent roles. Use with your favorite agent,
 
 https://github.com/user-attachments/assets/72cc52a0-1cad-4dc9-9078-daeee21e505c
 
-Staffed is a product-team pack for agent sessions: install the roles, ask for the expertise you need, and read the resulting artifacts. There is no runtime—only Markdown personas, a generated skill, and files in your project.
+https://github.com/user-attachments/assets/34e46e26-977e-4ba5-8d09-f8d1888866fd
+
+Staffed is a product-team pack for agent sessions: install the roles, ask for the expertise you need, and read the resulting artifacts. There is no runtime, only Markdown personas, a generated skill, and files in your project.
 
 ## Install
 
@@ -60,14 +62,14 @@ Have the PM evaluate this feature idea.
 Have a decisive, sceptic PM evaluate this feature idea for newcomers.
 ```
 
-Use `staffed compose` to browse valid terms and recipes. Safety, permissions, output contracts, model tier, and effort are controls—not modifiers—and take precedence.
+Use `staffed compose` to browse valid terms and recipes. Safety, permissions, output contracts, model tier, and effort are controls, not modifiers, and take precedence.
 
 ## First use
 
 Ask naturally:
 
 ```text
-Build a link shortener with custom domains — staff this project.
+Build a link shortener with custom domains ,  staff this project.
 ```
 
 Or ask for a specific role:
