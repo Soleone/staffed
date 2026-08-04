@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/Soleone/staffed/compare/v1.4.0...v1.5.0) (2026-08-04)
+
+
+### Features
+
+* **artist:** allow scoped creative code changes ([2abb4ac](https://github.com/Soleone/staffed/commit/2abb4ac1c286979ff6a8c8d44d8d22b2d59e3692))
+
 ## [1.4.0](https://github.com/Soleone/staffed/compare/v1.3.0...v1.4.0) (2026-08-04)
 
 
