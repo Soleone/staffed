@@ -1,6 +1,10 @@
 # Staffed
 
-Staff any project with coordinated subagent roles. Staffed ships a stable product staff
+Staff any project with coordinated subagent roles.
+
+https://github.com/user-attachments/assets/98118579-04cc-4db1-9a51-0908c3694a12
+
+Staffed ships a stable product staff
 covering research through measurement and an experimental detective-agency preview for
 investigation, interviewing, forensic analysis, and independent case review.
 
