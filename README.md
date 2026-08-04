@@ -223,7 +223,7 @@ experimental preview; see [Detective preview](docs/detective-pack.md).
 | `pm` | why / what, scope, metrics | `artifacts/pm/` | PRD: problem, users, scope, non-goals, metrics |
 | `ux` | flows, IA, screen states, interaction | `artifacts/ux/` | flows + IA + states + acceptance criteria |
 | `writer` | in-product words, user docs | `artifacts/writer/` | voice + terminology + UI strings + error copy |
-| `artist` | visual + audio identity and assets | `artifacts/artist/` `assets/` | creative direction + asset manifest (real files) |
+| `artist` | visual + audio identity, assets, creative implementation | `artifacts/artist/` + scoped app files | creative direction + manifest + real files/code |
 | `architect` | system design, task decomposition | `artifacts/architect/` `tasks/` | design + interfaces + task breakdown |
 | `builder` | implement one task, escalate cross-boundary | the code | diff + changes + tests + escalations |
 | `reviewer` | correctness, security, taste — reports, never fixes | none | verdict + findings (severity, file:line, fix) |
@@ -277,7 +277,7 @@ artifacts/
   ux/index.md              ops/index.md
   writer/index.md          marketer/index.md
   artist/index.md          analyst/index.md
-  artist/assets/…
+  artist/assets/…           artist/sources/…
 ```
 
 Two properties earn the nesting:
@@ -285,12 +285,14 @@ Two properties earn the nesting:
 - **Paths are derivable.** Any persona finds any other's output from the agent name
   alone — no filename to memorize. `index.md` is always the primary contract.
 - **Directories absorb growth.** A persona that outgrows one file adds siblings in its
-  own namespace (`architect/tasks/`, `artist/assets/`, a researcher's raw data) with no
-  convention change and no chance of collision. Ownership is enforced by the
-  filesystem: write only under your own directory, read anyone's.
+  own namespace (`architect/tasks/`, `artist/assets/`, `artist/sources/`, a researcher's
+  raw data) with no convention change and no chance of collision. Artifact ownership is
+  enforced by the filesystem: write only under your own artifact directory, read anyone's.
 
-Two intentional exceptions: `builder`'s artifact is the code, and `reviewer` writes
-nothing at all so its verdict can be routed immediately. Neither gets a directory. For
+Two intentional exceptions can modify the app tree: `builder`, whose artifact is the
+code, and `artist`, when producing or integrating scoped creative-production code. The
+artist still records those paths in `artifacts/artist/index.md`. `reviewer` writes
+nothing at all so its verdict can be routed immediately and gets no directory. For
 a canonical Pi artifact, the orchestrator makes one foreground `subagent` call with
 `output: false`; setting the tool's `output` path makes that alternate path authoritative
 and relocates the result. Use `output` only when a caller intentionally wants a different
