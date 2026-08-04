@@ -54,9 +54,9 @@ export const HOSTS = {
 
   claude: {
     label: "Claude Code",
-    // Implementation is retained behind the host gate until an authenticated
-    // real-Claude activation/non-activation attestation is recorded.
-    supported: false,
+    // Claude Desktop's Code tab reads the same .claude configuration as the CLI.
+    // Chat and Cowork are separate surfaces and are not targets of this host.
+    supported: true,
     allowedProfiles: ["none", "inherit", "claude"],
     userDir: () => join(homedir(), ".claude", "agents"),
     projectDir: (cwd) => join(cwd, ".claude", "agents"),
@@ -74,6 +74,7 @@ export const HOSTS = {
         p.body,
       ),
     notes: [
+      "Supports Claude Code CLI and the Code tab in Claude Desktop; Chat and Cowork are separate surfaces.",
       "Model names differ (opus/sonnet/haiku) — use the claude profile.",
       "Has no per-agent thinking level, so the thinking half of a tier is dropped.",
     ],

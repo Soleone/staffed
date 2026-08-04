@@ -169,15 +169,36 @@ test("breaking selector names reject and agent/profile axes remain independent",
   }
 });
 
-test("a lone Claude directory selects Claude and reaches the unchanged support gate", () => {
+test("a lone Claude directory selects the supported Claude host", () => {
   const home = tempHome("staffed-claude-only-");
   try {
     mkdirSync(join(home, ".claude"));
     const result = runResult(["status"], { env: { HOME: home } });
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /agent "claude" is not supported yet/);
-    assert.doesNotMatch(result.stderr, /defaulting to agent pi/);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /^agent\s+Claude Code \(claude\)$/m);
+    assert.doesNotMatch(result.stderr, /warning:|not supported yet|defaulting to agent pi/);
     assert.equal(existsSync(join(home, ".pi")), false);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("Claude user-scope CLI lifecycle enables, reports, and cleanly disables", () => {
+  const home = tempHome("staffed-claude-user-life-");
+  try {
+    mkdirSync(join(home, ".claude"));
+    run(["enable", "builder"], { env: { HOME: home } });
+    const agent = join(home, ".claude", "agents", "builder.md");
+    const manifest = join(home, ".claude", "agents", ".staffed.json");
+    const skill = join(home, ".claude", "skills", "staffed", "SKILL.md");
+    assert.equal(existsSync(agent), true);
+    assert.equal(existsSync(manifest), true);
+    assert.equal(existsSync(skill), true);
+    assert.match(run(["status"], { env: { HOME: home } }), /1\/11 enabled/);
+    run(["disable"], { env: { HOME: home } });
+    assert.equal(existsSync(agent), false);
+    assert.equal(existsSync(manifest), false);
+    assert.equal(existsSync(skill), false);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
@@ -204,6 +225,20 @@ test("project enable records exact pinned install facts and status uses them", (
     const status = run(["status", "--scope", "project"], { cwd });
     assert.match(status, /persona\s+tier\s+effort\s+state\s+installed/);
     assert.match(status, /builder\s+strong\s+low\s+enabled\s+strong → openai-codex\/gpt-5\.6-sol:medium \(openai\)/);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("Anthropic profile records provider-qualified Pi model facts", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "staffed-anthropic-"));
+  try {
+    run(["enable", "builder", "--scope", "project", "--profile", "anthropic", "--no-skill"], { cwd });
+    const manifest = JSON.parse(readFileSync(join(cwd, ".pi", "agents", ".staffed.json"), "utf8"));
+    assert.equal(manifest.files["builder.md"].profile, "anthropic");
+    assert.equal(manifest.files["builder.md"].model, "anthropic/claude-opus-5");
+    assert.equal(manifest.files["builder.md"].thinking, "medium");
+    assert.match(readFileSync(join(cwd, ".pi", "agents", "builder.md"), "utf8"), /^model: anthropic\/claude-opus-5:medium$/m);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

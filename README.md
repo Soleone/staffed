@@ -98,7 +98,7 @@ Each role writes its primary result to `artifacts/<role>/index.md`; the artifact
 
 Useful options: `--agent pi|claude|opencode`, `--scope user|project`, `--pack`, `--profile`, `--model`, `--thinking`, `--link`, `--force`, `--dry-run`, and `--no-skill`.
 
-`--agent` selects where files are rendered; `--profile` selects render-time model defaults. They are independent. Without `--agent`, Staffed selects the one detected host; if both Pi and Claude are present, choose explicitly. Pi is currently supported. Claude Code and opencode are prepared but remain gated, so requests for them fail rather than write unverified files.
+`--agent` selects where files are rendered; `--profile` selects render-time model defaults. They are independent. Without `--agent`, Staffed selects the one detected host; if both Pi and Claude are present, choose explicitly. Pi and Claude Code are supported; the Claude integration works in both the CLI and Claude Desktop's Code tab because those surfaces share `.claude` configuration. Claude Desktop Chat and Cowork are separate surfaces and are not supported by this integration. opencode remains gated, so requests for it fail rather than write unverified files.
 
 `enable` and `disable` only manage files Staffed owns. They do not overwrite foreign or locally modified files without `--force`. One pack is active per install scope. `list` and `compose` show the catalog; use `status` for the installed state.
 
@@ -114,6 +114,6 @@ Most roles write to `artifacts/<role>/index.md`. `builder` changes the code; `re
 
 The built-in Product pack is the default. The experimental Detective preview is available through `staffed pack use detective`; see [Detective preview](docs/detective-pack.md).
 
-Roles have a default tier (`fast`, `balanced`, `strong`, or `deep`) and effort level. Plain `enable` inherits the parent session model. `--profile openai` stamps OpenAI-oriented defaults into rendered copies; use `staffed tier`, `staffed doctor`, and `staffed status` to inspect them. Durable tier changes require a clone or persistent install, not a temporary `pnpm dlx` cache.
+Roles have a default tier (`fast`, `balanced`, `strong`, or `deep`) and effort level. Plain `enable` inherits the parent session model. `--profile openai` and `--profile anthropic` stamp provider-qualified Pi model defaults into rendered copies; `--profile claude` uses Claude Code's `haiku`, `sonnet`, and `opus` aliases. The legacy `pi` profile remains available for existing installs. Use `staffed tier`, `staffed doctor`, and `staffed status` to inspect mappings. Durable tier changes require a clone or persistent install, not a temporary `pnpm dlx` cache.
 
-For modifier definitions and recipes, see [Composition](docs/composition.md). For the Claude Code support gate, see the [compatibility runbook](docs/claude-code-compatibility.md).
+For modifier definitions and recipes, see [Composition](docs/composition.md). For Claude Code and Desktop surface details, see the [compatibility guide](docs/claude-code-compatibility.md).

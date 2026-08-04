@@ -10,9 +10,7 @@ import { generateSkill } from "../src/skill.mjs";
 import { loadPersonas } from "../src/personas.mjs";
 
 function prepared(operation) {
-  HOSTS.claude.supported = true;
-  try { return operation(); }
-  finally { HOSTS.claude.supported = false; }
+  return operation();
 }
 const enablePrepared = (opts) => prepared(() => enable(opts));
 const disablePrepared = (opts) => prepared(() => disable(opts));
@@ -29,9 +27,9 @@ function seedLegacy(cwd, text) {
   return { block, manifestPath };
 }
 
-test("Claude Code remains publicly gated pending authenticated attestation", () => {
-  assert.equal(HOSTS.claude.supported, false);
-  assert.throws(() => resolveHost("claude"), /not supported yet/);
+test("Claude Code is enabled for CLI and Desktop Code configuration", () => {
+  assert.equal(HOSTS.claude.supported, true);
+  assert.equal(resolveHost("claude").key, "claude");
 });
 
 test("Claude rendering and skill retain explicit activation without Pi-only controls", () => {
@@ -49,7 +47,7 @@ test("Claude rendering and skill retain explicit activation without Pi-only cont
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
 
-test("prepared Claude project lifecycle removes only a tracked legacy CLAUDE.md block", () => {
+test("Claude project lifecycle removes only a tracked legacy CLAUDE.md block", () => {
   const cwd = mkdtempSync(join(tmpdir(), "staffed-claude-cleanup-"));
   try {
     const { manifestPath } = seedLegacy(cwd, "prefix\nBLOCK\nsuffix\n");

@@ -24,12 +24,18 @@ test("canonical tiers and persona assignments are exact", () => {
   assert.ok(loadPersonas().every((persona) => persona.effort === "low"));
 });
 
-test("openai profile resolves the approved four mappings", () => {
+test("provider profiles resolve the approved four mappings", () => {
   assert.deepEqual(resolveProfile("openai").map, {
     fast: { model: "openai-codex/gpt-5.6-terra", thinking: "low" },
     balanced: { model: "openai-codex/gpt-5.6-terra", thinking: "medium" },
     strong: { model: "openai-codex/gpt-5.6-sol", thinking: "medium" },
     deep: { model: "openai-codex/gpt-5.6-sol", thinking: "high" },
+  });
+  assert.deepEqual(resolveProfile("anthropic").map, {
+    fast: { model: "anthropic/claude-haiku-4-5", thinking: "low" },
+    balanced: { model: "anthropic/claude-sonnet-5", thinking: "medium" },
+    strong: { model: "anthropic/claude-opus-5", thinking: "medium" },
+    deep: { model: "anthropic/claude-opus-5", thinking: "xhigh" },
   });
 });
 
@@ -80,16 +86,21 @@ test("legacy tier omissions fail and malformed supplied mappings validate", () =
   assert.ok(problems.some((p) => p.includes('tier "strong"')));
 });
 
-test("approved representative personas render exact OpenAI values", () => {
+test("approved representative personas render exact provider values", () => {
   const cwd = mkdtempSync(join(tmpdir(), "staffed-render-"));
   try {
-    const result = plan({ host: "pi", scope: "project", profile: "openai", cwd });
-    const byName = new Map(result.items.map((item) => [item.persona.name, item.content]));
+    const openai = plan({ host: "pi", scope: "project", profile: "openai", cwd });
+    const openaiByName = new Map(openai.items.map((item) => [item.persona.name, item.content]));
     for (const name of ["builder", "reviewer", "ops"]) {
-      assert.match(byName.get(name), /^model: openai-codex\/gpt-5\.6-sol:medium$/m);
+      assert.match(openaiByName.get(name), /^model: openai-codex\/gpt-5\.6-sol:medium$/m);
     }
-    assert.match(byName.get("researcher"), /^model: openai-codex\/gpt-5\.6-terra:medium$/m);
-    assert.match(byName.get("architect"), /^model: openai-codex\/gpt-5\.6-sol:medium$/m);
+    assert.match(openaiByName.get("researcher"), /^model: openai-codex\/gpt-5\.6-terra:medium$/m);
+    assert.match(openaiByName.get("architect"), /^model: openai-codex\/gpt-5\.6-sol:medium$/m);
+
+    const anthropic = plan({ host: "pi", scope: "project", profile: "anthropic", cwd });
+    const anthropicByName = new Map(anthropic.items.map((item) => [item.persona.name, item.content]));
+    assert.match(anthropicByName.get("builder"), /^model: anthropic\/claude-opus-5:medium$/m);
+    assert.match(anthropicByName.get("artist"), /^model: anthropic\/claude-opus-5:xhigh$/m);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

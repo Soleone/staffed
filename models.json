@@ -10,12 +10,30 @@
     "",
     "Inspect with: staffed tier",
     "Edit via: staffed tier strong --model X --thinking high",
-    "Select defaults with: staffed tier --profile openai",
+    "Select defaults with: staffed tier --profile openai (or anthropic)",
     "'unverified' lists tiers seeded by guesswork; declaring one clears its entry.",
     "Check your own install with: staffed doctor"
   ],
   "profile": "openai",
   "profiles": {
+    "anthropic": {
+      "deep": {
+        "model": "anthropic/claude-opus-5",
+        "thinking": "xhigh"
+      },
+      "strong": {
+        "model": "anthropic/claude-opus-5",
+        "thinking": "medium"
+      },
+      "balanced": {
+        "model": "anthropic/claude-sonnet-5",
+        "thinking": "medium"
+      },
+      "fast": {
+        "model": "anthropic/claude-haiku-4-5",
+        "thinking": "low"
+      }
+    },
     "pi": {
       "deep": {
         "model": "claude-opus-5",
