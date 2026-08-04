@@ -59,6 +59,41 @@ Build a link shortener with custom domains — staff this project.
 That phrase (or "use Staffed", or `/skill:staffed`) engages the org. The session
 dispatches from there, and you read `artifacts/` instead of a wall of chat.
 
+### 3 things to try
+
+**1. Find the next worthwhile feature.** Ask one expert for a focused recommendation:
+
+```text
+Use Staffed. Have the PM inspect this project and recommend three features worth adding next.
+```
+
+The PM weighs user value, scope, and trade-offs, then writes the recommendation to
+`artifacts/pm/index.md`.
+
+**2. Run a feature through the factory.** Give a small feature a complete build-and-review loop:
+
+```text
+Use Staffed. Have the architect plan [feature], the builder implement it, and the reviewer check the result. If review requests changes, send it back to the builder and review it again.
+```
+
+That runs `architect → builder → reviewer → builder if needed`: a concrete plan, working
+code, independent review, and a correction loop without requiring the full product pipeline.
+
+**3. Give an expert a point of view.** Compare a plain request:
+
+```text
+Use Staffed. Have the PM evaluate this feature idea.
+```
+
+with a composed one:
+
+```text
+Use Staffed. Have a sceptic, direct PM evaluate this feature idea.
+```
+
+The `sceptic` modifier interrogates unsupported assumptions; `direct` asks for a candid,
+low-ceremony recommendation. Try `pnpm dlx staffed compose` to explore more combinations.
+
 ```bash
 pnpm dlx staffed enable pm architect     # only these, additive
 pnpm dlx staffed enable --scope project  # into ./.pi/agents/, committable
