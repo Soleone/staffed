@@ -69,7 +69,7 @@ Use `staffed compose` to browse valid terms and recipes. Safety, permissions, ou
 Ask naturally:
 
 ```text
-Build a link shortener with custom domains ,  staff this project.
+Using staffed build a link shortener with custom domains.
 ```
 
 Or ask for a specific role:
