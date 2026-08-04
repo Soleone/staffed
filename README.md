@@ -19,7 +19,13 @@ That leaves the personas and their compact composition catalog as the product, a
 ## Install
 
 ```bash
-pnpm install -g staffed
+# pnpm:
+pnpm add -g staffed
+
+# npm:
+npm install -g staffed
+
+# check it out:
 staffed
 ```
 
