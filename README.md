@@ -1,37 +1,29 @@
 # Staffed
 
-Staff any project with coordinated subagent roles.
+Staff any project with coordinated subagent roles. Use with your favorite agent, e.g. pi or claude.
 
 https://github.com/user-attachments/assets/98118579-04cc-4db1-9a51-0908c3694a12
 
-Staffed ships a stable product staff
-covering research through measurement and an experimental detective-agency preview for
-investigation, interviewing, forensic analysis, and independent case review.
+Staffed ships a stable product team covering every essential role.
 
-It aims to be the simplest, lightest way to run a real product pipeline through agents:
-**there is no runtime.** No orchestration engine, no graph to define, no framework to
-adopt, no server, no dependencies, no build step, and nothing written into files you own.
-The active staff pack's Markdown personas land in a directory your agent already reads,
-a generated skill tells it they are there and when to reach for them, and the agent
-session you already have does the orchestrating. One command sets it up, one command removes it.
+It aims to be the simplest, lightest way to run a real product pipeline through agents: **there is no runtime**, just some basic configuration and resulting markdown files.
 
-That leaves the personas and their compact composition catalog as the product, and that
-is the point: what makes this work is what the personas *say*, not machinery wrapped
-around them. Your session decomposes a goal, dispatches personas, and validates what each
-returns. Three properties keep a long pipeline from collapsing back into one agent doing
-everything:
+The active staff pack's Markdown personas land in a directory your agent already reads, a generated skill tells it they are there and when to reach for them, and the agent session you already have does the orchestrating. One command sets it up, one command removes it.
 
-- **Descriptions route.** Every persona states what it owns *and what it must refuse*,
-  so adjacent roles don't get confused for each other. `pm` won't design screens, `ux`
-  won't write the strings, `writer` won't write marketing copy.
-- **Artifacts live on disk.** Each persona writes to `artifacts/<agent>/index.md` and
-  returns the path, not the document. The orchestrator's context stays flat whether the
-  pipeline has three stages or eleven, and any stage can be re-run against the same
-  inputs.
-- **Output is contract-shaped.** Every persona ends in a fixed structure, so results
-  can be parsed, checked, and chained instead of read and paraphrased.
+That leaves the personas and their compact composition catalog as the product, and that is the point: what makes this work is what the personas *say*, not machinery wrapped around them. Your session decomposes a goal, dispatches personas, and validates what each returns. Three properties keep a long pipeline from collapsing back into one agent doing everything:
+
+- **Descriptions route.** Every persona states what it owns *and what it must refuse*, so adjacent roles don't get confused for each other. `pm` won't design screens, `ux` won't write the strings, `writer` won't write marketing copy.
+- **Artifacts live on disk.** Each persona writes to `artifacts/<agent>/index.md` and returns the path, not the document. The orchestrator's context stays flat whether the pipeline has three stages or eleven, and any stage can be re-run against the same inputs.
+- **Output is contract-shaped.** Every persona ends in a fixed structure, so results can be parsed, checked, and chained instead of read and paraphrased.
 
 ## Install
+
+```bash
+pnpm install -g staffed
+staffed
+```
+
+Or test, without installing:
 
 ```bash
 pnpm dlx staffed enable                   # product pack; inherit the parent model
@@ -43,7 +35,7 @@ pnpm dlx staffed status                   # exact stamped model, or inherited/le
 
 That does two things, both required:
 
-1. renders the active pack's personas into `~/.pi/agent/agents/`
+1. renders the active pack's personas into, e.g. `~/.pi/agent/agents/`
 2. installs a **`staffed` skill** and lazy composition reference into `~/.pi/agent/skills/`
 
 The second one is not a nicety. `subagent` surfaces the roster only inside its error
@@ -60,40 +52,31 @@ There is no API to learn, so using it is a sentence:
 Build a link shortener with custom domains — staff this project.
 ```
 
-That phrase (or "use Staffed", or `/skill:staffed`) engages the org. The session
-dispatches from there, and you read `artifacts/` instead of a wall of chat.
+That phrase (or "use Staffed", or `/skill:staffed`) engages the org. The session dispatches from there, and you read `artifacts/` instead of a wall of chat.
 
 ### 3 things to try
 
 **1. Find the next worthwhile feature.** Ask one expert for a focused recommendation:
 
-```text
-Use Staffed. Have the PM inspect this project and recommend three features worth adding next.
-```
+
+> Have the staffed PM inspect this project and recommend three features worth adding next. If the user agrees then hand it off starting with the architect.
 
 The PM weighs user value, scope, and trade-offs, then writes the recommendation to
 `artifacts/pm/index.md`.
 
 **2. Run a feature through the factory.** Give a small feature a complete build-and-review loop:
 
-```text
-Use Staffed. Have the architect plan [feature], the builder implement it, and the reviewer check the result. If review requests changes, send it back to the builder and review it again.
-```
+> Use Staffed. Have the architect plan the next obvious feature, the builder implement it, and the reviewer check the result and potentially hand it back to the builder.
 
-That runs `architect → builder → reviewer → builder if needed`: a concrete plan, working
-code, independent review, and a correction loop without requiring the full product pipeline.
+That runs `architect → builder → reviewer → builder if needed`: a concrete plan, working code, independent review, and a correction loop without requiring the full product pipeline.
 
 **3. Give an expert a point of view.** Compare a plain request:
 
-```text
-Use Staffed. Have the PM evaluate this feature idea.
-```
+> Use staffed. Have the pm evaluate this feature idea.
 
 with a composed one:
 
-```text
-Use Staffed. Have a sceptic, direct PM evaluate this feature idea.
-```
+> Use Staffed. Have a sceptic, direct PM evaluate this feature idea.
 
 The `sceptic` modifier interrogates unsupported assumptions; `direct` asks for a candid,
 low-ceremony recommendation. Try `pnpm dlx staffed compose` to explore more combinations.
