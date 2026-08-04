@@ -95,8 +95,8 @@ export function validate(personas, stages, { noArtifact = PRODUCT_NO_ARTIFACT, n
   const noArtifactSet = new Set(noArtifact);
   const noDirectorySet = new Set(noDirectory);
 
-  // The generated brief walks a canonical stage order; it must cover the roster exactly,
-  // or a persona would be installed that no brief ever tells the orchestrator to use.
+  // The generated skill uses this canonical stage order for roster routing; it must
+  // cover the roster exactly so every installed persona remains discoverable.
   if (stages) {
     const staged = stages.map((s) => s.name);
     for (const n of names) if (!staged.includes(n)) problems.push(`${n}: in the roster but not in the pipeline order`);

@@ -61,4 +61,9 @@ test("manifest records fail closed by slot and required value type", () => {
   const normalized = normalizeManifest(withComposition, { hostKey: "pi", scope: "project" });
   assert.equal(normalized.pack, "detective");
   assert.equal(normalized.references.composition.type, "copy");
+  const legacyBrief = normalizeManifest(
+    { ...base, discovery: { brief: { type: "block", hash: "b".repeat(16) } } },
+    { hostKey: "pi", scope: "project" },
+  );
+  assert.deepEqual(legacyBrief.discovery.brief, { type: "block", hash: "b".repeat(16) });
 });

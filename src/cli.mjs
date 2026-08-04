@@ -12,7 +12,6 @@ import {
 } from "./models.mjs";
 import { HOSTS, resolveHost, selectDefaultAgent } from "./hosts.mjs";
 import * as placement from "./install.mjs";
-import { generateBrief } from "./brief.mjs";
 import { generateSkill } from "./skill.mjs";
 
 const HELP = `staffed — coordinated subagent roles for any project
@@ -38,9 +37,6 @@ composition and staff packs
 
 discovery (agents are invisible to an agent session; something must point at them)
   staffed skill                  print the Staffed skill — installed by default
-  staffed brief                  print the optional AGENTS.md block
-  staffed brief --write          also put it in AGENTS.md
-  staffed brief --remove         take it back out
 
 tiers
   staffed tier                                 show four tier -> model/thinking rows
@@ -55,9 +51,7 @@ options
   --profile <p>     model profile to stamp, or "none" (default: none)
   --model <m>       with \`tier\`: the model for that tier
   --thinking <t>    with \`tier\`: reasoning level, or "none" to clear
-  --brief           additionally write the AGENTS.md block (off by default)
   --no-skill        do not install the Staffed skill
-  --write, --remove with \`brief\`: apply or undo instead of printing
   --link            symlink instead of copy (dev workflow; excludes --profile)
   --force           overwrite foreign or locally modified files
   --dry-run, -n     print what would happen
@@ -87,13 +81,6 @@ const LABEL = {
   missing: "missing (was enabled)",
 };
 
-/** The personas actually present right now, in roster order. */
-const enabledNames = (opts) =>
-  placement
-    .status(opts)
-    .items.filter((i) => i.state === "enabled")
-    .map((i) => i.persona.name);
-
 function parse(argv) {
   const opts = { scope: "user", profile: "none", mode: "copy" };
   const rest = [];
@@ -111,11 +98,7 @@ function parse(argv) {
     else if (a === "--profile") opts.profile = value("--profile");
     else if (a === "--model") opts.model = value("--model");
     else if (a === "--thinking") opts.thinking = value("--thinking");
-    else if (a === "--brief") opts.brief = true;
-    else if (a === "--no-brief") opts.brief = false;
     else if (a === "--no-skill") opts.skill = false;
-    else if (a === "--write") opts.write = true;
-    else if (a === "--remove") opts.remove = true;
     else if (a === "--link") opts.mode = "link";
     else if (a === "--copy") opts.mode = "copy";
     else if (a === "--force") opts.force = true;
@@ -284,7 +267,6 @@ function printStatus(s) {
   };
   line("skill", s.skill, enabled.length ? "MISSING — nothing tells the agent these personas exist" : "absent");
   line("compose", s.composition, enabled.length ? "MISSING — composition details are unavailable" : "absent");
-  if (s.brief.state !== "absent") line("brief", s.brief, "absent");
   if (s.collisions?.length) console.log(`collisions ${s.collisions.map((c) => `${c.name}: ${c.path}`).join(", ")}`);
 }
 
@@ -300,7 +282,7 @@ const modelOf = (i) => {
 };
 
 const DEPENDENT_COMMANDS = new Set([
-  "doctor", "skill", "brief", "status", "enable", "install", "disable", "uninstall", "pack",
+  "doctor", "skill", "status", "enable", "install", "disable", "uninstall", "pack",
 ]);
 
 function assertKnownAgent(name) {
@@ -508,23 +490,6 @@ export async function main(argv = process.argv.slice(2)) {
     return 0;
   }
 
-  if (cmd === "brief") {
-    const file = host.briefFile(opts.scope, process.cwd());
-    const enabled = enabledNames(agentOpts);
-    if (!enabled.length && !opts.remove) {
-      console.error(`nothing is enabled for agent ${host.label} (${opts.scope} scope), so there is no brief to write.`);
-      return 1;
-    }
-    if (opts.remove || opts.write) {
-      const r = placement.setBrief({ ...agentOpts, action: opts.remove ? "remove" : "write" });
-      console.log(`${r.action}: ${r.file}`);
-      return 0;
-    }
-    console.log(`# would go in ${file}\n`);
-    const current = placement.status(agentOpts);
-    console.log(generateBrief({ hostKey: host.key, enabled, pack: current.pack.key }));
-    return 0;
-  }
 
 
   if (cmd === "status") {

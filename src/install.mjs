@@ -1,11 +1,11 @@
-import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, rmdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, rmdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { ROOT } from "./personas.mjs";
 import { DEFAULT_PACK, resolvePack } from "./packs.mjs";
 import { resolveProfile, tierFor } from "./models.mjs";
 import { resolveHost, targetDir } from "./hosts.mjs";
-import { deleteBriefBlock, findBriefBlock, generateBrief, upsertBriefBlock } from "./brief.mjs";
+import { planLegacyBriefCleanup } from "./legacy-brief-cleanup.mjs";
 import { compositionReferencePath, generateCompositionReference, generateSkill, skillPath } from "./skill.mjs";
 import { hashText, inspectFile, normalizeManifest, removeDecision, writeDecision } from "./ownership.mjs";
 
@@ -98,11 +98,12 @@ function removeDiscoveryTarget(path) {
   else rmSync(path, { force: true });
 }
 
-function atomicReplace(path, content) {
+function atomicReplace(path, content, mode) {
   mkdirSync(dirname(path), { recursive: true });
   const temp = join(dirname(path), `.${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.tmp`);
   try {
-    writeFileSync(temp, content, { flag: "wx" });
+    writeFileSync(temp, content, { flag: "wx", ...(mode === undefined ? {} : { mode }) });
+    if (mode !== undefined) chmodSync(temp, mode);
     if (pathExists(path) && lstatSync(path).isDirectory()) rmdirSync(path);
     renameSync(temp, path);
   } catch (error) {
@@ -212,20 +213,6 @@ function healthyNames(host, dir, files, pack) {
   return pack.personas.filter((persona) => inspectFile(join(dir, host.filename(persona)), files[host.filename(persona)]).state === "enabled").map((p) => p.name);
 }
 
-function briefInspection(file, record, desired) {
-  if (!pathExists(file)) return { file, record, state: record ? "missing" : "absent" };
-  const stat = lstatSync(file);
-  if (!stat.isFile()) return { file, record, state: "replaced" };
-  const text = readFileSync(file, "utf8");
-  let found;
-  try { found = findBriefBlock(text); }
-  catch (error) { return { file, record, state: "invalid", error: error.message }; }
-  if (!found) return { file, record, state: record ? "missing" : "absent" };
-  if (!record) return { file, record, state: "foreign" };
-  if (hashText(found.text) !== record.hash) return { file, record, state: "modified" };
-  return { file, record, state: found.text === desired ? "current" : "stale" };
-}
-
 function discoveryStatus(host, scope, cwd, manifest, names, pack) {
   const skillFile = skillPath(host.skillDir(scope, cwd));
   const skillText = generateSkill({ hostKey: host.key, enabled: names, personas: pack.personas, pack: pack.key });
@@ -235,8 +222,7 @@ function discoveryStatus(host, scope, cwd, manifest, names, pack) {
   const referenceText = generateCompositionReference({ pack: pack.key, personas: pack.personas.filter((p) => names.includes(p.name)) });
   const ri = inspectReferenceFile(referenceFile, manifest?.references?.composition);
   const composition = { ...ri, state: ri.state === "enabled" ? (readFileSync(referenceFile, "utf8") === referenceText ? "current" : "stale") : ri.state, content: referenceText };
-  const briefFile = host.briefFile(scope, cwd), briefText = generateBrief({ hostKey: host.key, enabled: names, pack: pack.key });
-  return { skill: { ...skill, content: skillText }, composition, brief: { ...briefInspection(briefFile, manifest?.discovery?.brief, briefText), content: briefText } };
+  return { skill: { ...skill, content: skillText }, composition };
 }
 
 export function enable(opts) {
@@ -244,9 +230,6 @@ export function enable(opts) {
   if (p.collisions.length) throw new Error(`Claude agent name collision(s):\n${p.collisions.map((c) => `  ${c.name}: ${c.path}`).join("\n")}`);
   if (p.switching && opts.skill === false && (p.manifest.discovery?.skill || p.manifest.references?.composition)) {
     throw new Error("--no-skill cannot switch a pack that has tracked discovery; switch normally, then disable discovery if needed");
-  }
-  if (p.switching && opts.brief === false && p.manifest.discovery?.brief) {
-    throw new Error("--no-brief cannot switch a pack that has a tracked brief; switch normally so discovery stays coherent");
   }
   const blocked = p.items.filter((i) => writeDecision(i.state, { force }) === "block");
   if (p.switching) {
@@ -267,17 +250,18 @@ export function enable(opts) {
     .map((persona) => persona.name);
   const cwd = opts.cwd ?? process.cwd();
   const d = discoveryStatus(p.host, p.scope, cwd, p.manifest, names, p.pack);
-  const desired = [];
-  if (opts.skill !== false) desired.push(["skill", d.skill], ["composition", d.composition]);
-  if (opts.brief === true || (p.switching && p.manifest.discovery?.brief)) desired.push(["brief", d.brief]);
+  const desired = opts.skill !== false ? [["skill", d.skill], ["composition", d.composition]] : [];
+  const legacyCleanup = p.manifest?.discovery?.brief
+    ? planLegacyBriefCleanup({ hostKey: p.host.key, scope: p.scope, cwd, home: opts.home, record: p.manifest.discovery.brief, force })
+    : null;
   assertSafeProjectMutationPaths(p.scope, cwd, [
     join(p.dir, MANIFEST),
     ...p.items.map((item) => item.path),
     ...p.previousItems.map((item) => item.path),
-    ...desired.map(([, item]) => item.path ?? item.file),
+    ...desired.map(([, item]) => item.path),
+    ...(legacyCleanup ? [legacyCleanup.path] : []),
   ]);
   for (const [, item] of desired) {
-    if (item.state === "invalid") throw new Error(`invalid Staffed brief in ${item.file}: ${item.error}`);
     if (["foreign", "modified", "replaced"].includes(item.state) && !force) blocked.push(item);
   }
   if (blocked.length) throw new Error(`refusing to overwrite ${blocked.length} unowned or modified item(s):\n${blocked.map((i) => `  ${i.file ?? i.path}`).join("\n")}\nRe-run with --force to overwrite.`);
@@ -290,19 +274,17 @@ export function enable(opts) {
   mkdirSync(p.dir, { recursive: true });
   const discovery = { ...(p.manifest?.discovery ?? {}) };
   const references = { ...(p.manifest?.references ?? {}) };
+  if (legacyCleanup) {
+    if (legacyCleanup.action === "remove-block") atomicReplace(legacyCleanup.path, legacyCleanup.content, legacyCleanup.mode);
+    delete discovery.brief;
+  }
   // Commit discovery first with same-directory atomic replacements. Forced replacement
   // removes/replaces only the path entry itself, so symlink targets and directory contents are safe.
   for (const [key, item] of desired) {
-    if (key === "skill" || key === "composition") {
-      atomicReplace(item.path, item.content);
-      const record = { type: "copy", hash: hashText(item.content) };
-      if (key === "skill") discovery.skill = record;
-      else references.composition = record;
-    } else {
-      const old = ["foreign", "modified", "current", "stale"].includes(item.state) ? readFileSync(item.file, "utf8") : "";
-      atomicReplace(item.file, upsertBriefBlock(old, item.content));
-      discovery.brief = { type: "block", hash: hashText(item.content) };
-    }
+    atomicReplace(item.path, item.content);
+    const record = { type: "copy", hash: hashText(item.content) };
+    if (key === "skill") discovery.skill = record;
+    else references.composition = record;
   }
   const wrote = [];
   if (p.switching) {
@@ -315,7 +297,7 @@ export function enable(opts) {
     wrote.push(item.file);
   }
   const manifest = writeManifest(p, files, discovery, references);
-  return { ...p, wrote, enabledTotal: Object.keys(files).length, manifest, skill: d.skill, composition: d.composition, brief: d.brief };
+  return { ...p, wrote, enabledTotal: Object.keys(files).length, manifest, skill: d.skill, composition: d.composition };
 }
 
 export function disable(opts) {
@@ -326,7 +308,10 @@ export function disable(opts) {
   const mutationPaths = [join(p.dir, MANIFEST), ...p.items.map((item) => item.path)];
   if (opts.skill !== false && p.manifest.discovery?.skill) mutationPaths.push(skillPath(p.host.skillDir(p.scope, cwd)));
   if (opts.skill !== false && p.manifest.references?.composition) mutationPaths.push(compositionReferencePath(p.host.skillDir(p.scope, cwd)));
-  if (opts.brief !== false && p.manifest.discovery?.brief) mutationPaths.push(p.host.briefFile(p.scope, cwd));
+  const legacyCleanup = p.manifest.discovery?.brief
+    ? planLegacyBriefCleanup({ hostKey: p.host.key, scope: p.scope, cwd, home: opts.home, record: p.manifest.discovery.brief, force: opts.force })
+    : null;
+  if (legacyCleanup) mutationPaths.push(legacyCleanup.path);
   assertSafeProjectMutationPaths(p.scope, cwd, mutationPaths);
   // Validate discovery targets before the first mutation so expected failures are atomic.
   if (opts.skill !== false && p.manifest.discovery?.skill) {
@@ -339,10 +324,11 @@ export function disable(opts) {
     assertSafeReferencePath(referencePath);
     if (opts.force) assertSafeDiscoveryTarget(referencePath);
   }
-  if (opts.brief !== false && p.manifest.discovery?.brief) {
-    const file = p.host.briefFile(p.scope, cwd);
-    if (opts.force) assertSafeDiscoveryTarget(file);
-    if (pathExists(file) && lstatSync(file).isFile()) findBriefBlock(readFileSync(file, "utf8"));
+  if (opts.dryRun) return { ...p, removed: [], kept: [], remaining: Object.keys(p.manifest.files).length, dryRun: true };
+  const discovery = { ...(p.manifest.discovery ?? {}) };
+  if (legacyCleanup) {
+    if (legacyCleanup.action === "remove-block") atomicReplace(legacyCleanup.path, legacyCleanup.content, legacyCleanup.mode);
+    delete discovery.brief;
   }
   const files = { ...p.manifest.files }, removed = [], kept = [];
   for (const item of p.items) {
@@ -353,7 +339,6 @@ export function disable(opts) {
     else if (decision === "keep") kept.push(item.file);
   }
   const names = healthyNames(p.host, p.dir, files, p.pack);
-  const discovery = { ...(p.manifest.discovery ?? {}) };
   const references = { ...(p.manifest.references ?? {}) };
   const d = discoveryStatus(p.host, p.scope, cwd, { ...p.manifest, files, discovery }, names, p.pack);
   if (opts.skill !== false && discovery.skill) {
@@ -379,45 +364,10 @@ export function disable(opts) {
       references.composition = { type: "copy", hash: hashText(d.composition.content) };
     }
   }
-  if (opts.brief !== false && discovery.brief) {
-    const b = briefInspection(d.brief.file, discovery.brief, d.brief.content);
-    if (!names.length) {
-      if (b.state === "current" || b.state === "stale" || (opts.force && b.state === "modified")) {
-        atomicReplace(b.file, deleteBriefBlock(readFileSync(b.file, "utf8"))); delete discovery.brief;
-      } else if (opts.force && b.state === "replaced") {
-        removeDiscoveryTarget(b.file); delete discovery.brief;
-      } else if (b.state === "missing") delete discovery.brief;
-    } else if (["current", "stale"].includes(b.state) || (opts.force && ["modified", "replaced"].includes(b.state))) {
-      const text = b.state === "replaced" ? "" : readFileSync(b.file, "utf8");
-      atomicReplace(b.file, upsertBriefBlock(text, d.brief.content)); discovery.brief = { type: "block", hash: hashText(d.brief.content) };
-    }
-  }
+
   if (!names.length) removeEmptyDirectory(dirname(skillPath(p.host.skillDir(p.scope, cwd))));
   if (Object.keys(files).length || Object.keys(discovery).length || Object.keys(references).length) writeManifest(p, files, discovery, references); else rmSync(join(p.dir, MANIFEST), { force: true });
-  return { dir: p.dir, removed, kept, remaining: Object.keys(files).length, pack: p.pack, skill: d.skill, composition: d.composition, brief: d.brief };
-}
-
-export function setBrief({ action, host: hostName, scope = "user", cwd = process.cwd(), force = false }) {
-  const s = status({ host: hostName, scope, cwd });
-  if (!s.manifest) throw new Error(`nothing enabled by Staffed in ${s.dir}`);
-  const p = { ...s, pack: s.pack, profile: { key: "none" } }, discovery = { ...(s.manifest.discovery ?? {}) };
-  const b = s.brief;
-  if (force && b.state === "replaced") assertSafeDiscoveryTarget(b.file);
-  if (action === "write") {
-    if (b.state === "invalid") throw new Error(`invalid Staffed brief in ${b.file}: ${b.error}`);
-    if (["foreign", "modified", "replaced"].includes(b.state) && !force) throw new Error(`refusing to overwrite unowned, modified, or replaced brief in ${b.file}`);
-    const text = ["foreign", "modified", "current", "stale"].includes(b.state) ? readFileSync(b.file, "utf8") : "";
-    atomicReplace(b.file, upsertBriefBlock(text, b.content)); discovery.brief = { type: "block", hash: hashText(b.content) };
-  } else {
-    if (!discovery.brief) return { action: "absent", file: b.file };
-    if (b.state === "invalid") throw new Error(`invalid Staffed brief in ${b.file}: ${b.error}`);
-    if (b.state === "modified" && !force) return { action: "kept", file: b.file };
-    if (["current", "stale", "modified"].includes(b.state)) atomicReplace(b.file, deleteBriefBlock(readFileSync(b.file, "utf8")));
-    else if (force && b.state === "replaced") removeDiscoveryTarget(b.file);
-    delete discovery.brief;
-  }
-  writeManifest(p, s.manifest.files, discovery);
-  return { action: action === "write" ? "written" : "removed", file: b.file };
+  return { dir: p.dir, removed, kept, remaining: Object.keys(files).length, pack: p.pack, skill: d.skill, composition: d.composition };
 }
 
 export function status({ host: hostName, scope = "user", cwd = process.cwd() } = {}) {

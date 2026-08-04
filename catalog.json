@@ -454,7 +454,6 @@
         }
       ],
       "riskGate": "Do not add `reviewer` automatically. Add it when the change touches security, authentication, user data, destructive or irreversible state, migrations, public compatibility, deployment safety, broad cross-module behavior, or cannot be validated well by tests. Add `architect` only for a shared interface, multiple subsystem boundaries, or multiple independent build tasks. Add `pm` only when what or why remains unresolved; add `researcher` only when an external fact or feasibility question blocks that decision.",
-      "briefGuidance": "The pipeline above is an ordering reference, not a prescription. Use `reviewer` only for material risk, `architect` only for shared boundaries or multiple tasks, and `pm` only when scope is unresolved. Before more than two dispatches, state what each one earns. Require the shortest artifact that enables the next action, pass its path downstream, and re-review only prior findings and changed hunks.",
       "loops": [
         {
           "requires": [
@@ -648,7 +647,6 @@
         }
       ],
       "riskGate": "Do not add `case-reviewer` automatically. Add it when conclusions are consequential, provenance is disputed, alternative hypotheses remain materially open, investigative fairness is at risk, or the assessment cannot be independently checked. Add a specialist only for a question the case lead cannot responsibly own.",
-      "briefGuidance": "The pipeline above is an ordering reference, not a prescription. Use `case-reviewer` only for consequential or weakly validated conclusions, and add `interviewer` or `forensic-analyst` only for a specialist question the `investigator` cannot responsibly own. Before more than two dispatches, state what each one earns. Require the shortest artifact that enables the next action, pass its path downstream, and re-review only prior findings and changed case material.",
       "loops": [
         {
           "requires": [

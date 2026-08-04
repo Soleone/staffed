@@ -42,9 +42,6 @@ export const HOSTS = {
     supported: true,
     userDir: () => join(homedir(), ".pi", "agent", "agents"),
     projectDir: (cwd) => join(cwd, ".pi", "agents"),
-    // Where the orchestration brief goes. pi loads both of these at startup.
-    briefFile: (scope, cwd) =>
-      scope === "project" ? join(cwd, "AGENTS.md") : join(homedir(), ".pi", "agent", "AGENTS.md"),
     // Skills are the discovery mechanism: pi puts their descriptions in the system prompt.
     skillDir: (scope, cwd) => (scope === "project" ? join(cwd, ".pi", "skills") : join(homedir(), ".pi", "agent", "skills")),
     filename: (p) => `${p.name}.md`,
@@ -63,7 +60,6 @@ export const HOSTS = {
     allowedProfiles: ["none", "inherit", "claude"],
     userDir: () => join(homedir(), ".claude", "agents"),
     projectDir: (cwd) => join(cwd, ".claude", "agents"),
-    briefFile: (scope, cwd) => (scope === "project" ? join(cwd, "CLAUDE.md") : join(homedir(), ".claude", "CLAUDE.md")),
     skillDir: (scope, cwd) => (scope === "project" ? join(cwd, ".claude", "skills") : join(homedir(), ".claude", "skills")),
     filename: (p) => `${p.name}.md`,
     render: (p, tier) =>
@@ -87,7 +83,6 @@ export const HOSTS = {
     supported: false,
     userDir: () => join(homedir(), ".config", "opencode", "agent"),
     projectDir: (cwd) => join(cwd, ".opencode", "agent"),
-    briefFile: (scope, cwd) => (scope === "project" ? join(cwd, "AGENTS.md") : join(homedir(), ".config", "opencode", "AGENTS.md")),
     skillDir: (scope, cwd) => (scope === "project" ? join(cwd, ".opencode", "skills") : join(homedir(), ".config", "opencode", "skills")),
     filename: (p) => `${p.name}.md`,
     render: (p, tier) =>

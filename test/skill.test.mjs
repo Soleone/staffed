@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { STAGES, generate as generateBrief } from "../src/brief.mjs";
+import { resolvePack } from "../src/packs.mjs";
 import { generate as generateSkill } from "../src/skill.mjs";
 import { loadPersonas } from "../src/personas.mjs";
 
 const personas = loadPersonas();
-const enabled = STAGES.map((stage) => stage.name);
+const enabled = resolvePack().stages.map((stage) => stage.name);
 const oneLine = (text) => text.replace(/\s+/g, " ");
 
 test("generated skill defaults ordinary implementation to one actor", () => {
@@ -60,16 +60,6 @@ test("generated skill defaults effort low and makes escalation explicit", () => 
   assert.match(skill, /\| `architect` \| strong \| low \|/);
 });
 
-test("generated brief preserves efficiency guidance when installed globally", () => {
-  const brief = oneLine(generateBrief(enabled));
-  assert.match(brief, /default to one persona/);
-  assert.match(brief, /pipeline above is an ordering reference, not a prescription/);
-  assert.match(brief, /Before more than two dispatches/);
-  assert.match(brief, /re-review only prior findings and changed hunks/);
-  assert.match(brief, /Start every dispatch at effort `low`/);
-  assert.match(brief, /higher `effort`, a higher model `tier`, or both/);
-  assert.match(brief, /without approval/);
-});
 
 test("every persona carries portable effort defaults and an escalation contract", () => {
   for (const persona of personas) {

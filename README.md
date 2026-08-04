@@ -116,9 +116,8 @@ overwriting it. `--force` when that is what you actually want.
 |---|---|
 | `enable [name...]` | enable all, or just the named ones (additive) |
 | `disable [name...]` | disable all, or just the named ones |
-| `status` | what is enabled, per-persona, plus drift and brief health |
+| `status` | what is enabled, per-persona, plus discovery drift |
 | `skill` | print the generated skill |
-| `brief` | print the optional AGENTS.md block; `--write` / `--remove` to apply it |
 | `list [--pack name]` | a pack's roster with each persona's default model tier and effort |
 | `compose [terms...]` | browse modes/recipes or validate and explain a composition |
 | `pack list` | available staff packs |
@@ -128,7 +127,7 @@ overwriting it. `--force` when that is what you actually want.
 | `validate` | structural checks on the roster |
 
 Options: `--agent pi|claude|opencode` `--scope user|project` `--pack` `--profile` `--model`
-`--thinking` `--link` `--force` `--dry-run` `--brief` `--no-skill`.
+`--thinking` `--link` `--force` `--dry-run` `--no-skill`.
 
 Agent selection is automatic when `--agent` is omitted. Staffed checks only the canonical
 home configuration directories: `~/.pi/agent` and `~/.claude`. If exactly one exists,
@@ -145,8 +144,16 @@ chooses model frontmatter; neither option infers the other. For example,
 while `--agent claude` alone uses profile `none` and does not pin a model. Claude Code
 and opencode remain behind their current support gates.
 
-`enable` and `disable` keep the skill in sync automatically. `--brief` additionally
-writes an `AGENTS.md` block; `--no-skill` installs nothing but the personas.
+`enable` and `disable` keep the skill in sync automatically. The skill is Staffed's
+sole discovery and orchestration guidance. `--no-skill` is an expert escape hatch that
+installs only personas; without caller-supplied instructions, those roles are not
+discoverable to the orchestrator.
+
+**One-release migration:** if a schema-2 manifest tracks an older Staffed block in
+`AGENTS.md` or `CLAUDE.md`, the next real `enable` or `disable` removes only that marked
+block and prunes its ownership record. Dry runs do not migrate. A modified but
+well-bounded block requires `--force`; malformed markers fail closed. Untracked blocks
+are untouched and must be removed manually.
 
 **Presence is enablement.** pi has no disabled-list for agents — `pi config` toggles
 extensions, skills, prompts and themes, not these — so `enable` and `disable` are file
@@ -473,13 +480,6 @@ Not installed: researcher, ux, artist, writer, architect, ops, marketer, analyst
 A hand-copied block naming all eleven would tell your orchestrator to dispatch agents
 that are not installed, which fails at the tool call. `status` reports the skill as
 `current`, `STALE` or `MISSING`.
-
-### If you want unconditional presence
-
-`--brief` additionally writes the same guidance into `AGENTS.md`, wrapped in
-`<!-- staffed:start -->` markers so it updates and removes cleanly without touching the
-rest of the file. It is off by default: it costs context on every single turn, where
-the skill costs one line until it is used.
 
 ## Design decisions
 

@@ -184,7 +184,7 @@ export function validateCatalog(catalog = loadCatalog()) {
   for (const [packName, definition] of Object.entries(catalog.packs)) {
     const label = `packs.${packName}`;
     if (!object(definition)) { problems.push(`${label} must be an object`); continue; }
-    for (const field of ["label", "description", "agentsDir", "riskGate", "briefGuidance"]) requireString(definition, field, label);
+    for (const field of ["label", "description", "agentsDir", "riskGate"]) requireString(definition, field, label);
     if (typeof definition.experimental !== "boolean") problems.push(`${label}.experimental must be a boolean`);
     for (const field of ["stages", "noArtifact", "noDirectory", "audiences", "recipes", "sizing", "loops", "parallelism", "activationExamples"]) requireArray(definition, field, label);
     if (Array.isArray(definition.activationExamples)) {

@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { selectDefaultAgent } from "../src/hosts.mjs";
+import { hashText } from "../src/ownership.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const BIN = join(ROOT, "bin", "staffed.mjs");
@@ -324,4 +325,39 @@ test("pack use exposes an exclusive detective preview switch", () => {
 test("CLI validation reports the complete clean roster and model config", () => {
   const output = run(["validate"]);
   assert.equal(output, "15 personas across 2 packs\n0 problems\n");
+});
+
+test("removed brief command and options reject while help and status omit the feature", () => {
+  const home = tempHome("staffed-no-brief-cli-");
+  try {
+    mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+    const command = runResult(["brief"], { env: { HOME: home } });
+    assert.equal(command.status, 2);
+    assert.match(command.stderr, /unknown command "brief"/);
+    for (const option of ["--brief", "--no-brief", "--write", "--remove"]) {
+      const result = runResult(["status", option], { env: { HOME: home } });
+      assert.equal(result.status, 1, option);
+      assert.match(result.stderr, new RegExp(`unknown option ${option}`));
+    }
+    assert.doesNotMatch(run(["help"]), /staffed brief|--brief|--no-brief|AGENTS\.md block/);
+    assert.doesNotMatch(run(["status"], { env: { HOME: home } }), /^brief\s/m);
+  } finally { rmSync(home, { recursive: true, force: true }); }
+});
+
+test("CLI user disable removes a matching tracked legacy Pi block and preserves surrounding bytes", () => {
+  const home = tempHome("staffed-user-cleanup-");
+  try {
+    mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+    run(["enable", "builder"], { env: { HOME: home } });
+    const block = "<!-- staffed:start -->\nlegacy\n<!-- staffed:end -->";
+    const brief = join(home, ".pi", "agent", "AGENTS.md");
+    writeFileSync(brief, `before\n${block}\nafter\n`);
+    const manifestPath = join(home, ".pi", "agent", "agents", ".staffed.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    manifest.discovery.brief = { type: "block", hash: hashText(block) };
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    run(["disable"], { env: { HOME: home } });
+    assert.equal(readFileSync(brief, "utf8"), "before\n\nafter\n");
+    assert.equal(existsSync(manifestPath), false);
+  } finally { rmSync(home, { recursive: true, force: true }); }
 });

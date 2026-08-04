@@ -7,7 +7,6 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 import { compositionSentence, dimensionsFor, loadCatalog, parseComposition, resolvePack, validateCatalog, vocabularyFor } from "../src/packs.mjs";
-import { generateBrief } from "../src/brief.mjs";
 import { generateCompositionReference, generateSkill } from "../src/skill.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -65,9 +64,6 @@ test("skill keeps a compact index and lazy-loads detailed definitions", () => {
   assert.match(reference, /experimental preview/);
   assert.match(skill, /Not installed: interviewer, forensic-analyst/);
   assert.doesNotMatch(skill, /careful-account|evidence-pass/);
-  const brief = generateBrief({ enabled: ["investigator", "case-reviewer"], pack: "detective" });
-  assert.match(brief.replace(/\s+/g, " "), /Use `case-reviewer` only/);
-  assert.doesNotMatch(brief, /Use `reviewer` only/);
 });
 
 test("skill frontmatter activates exact enabled roles with modifiers while retaining the ordinary-prompt gate", () => {
@@ -124,7 +120,6 @@ test("generic generators consume third-pack metadata without built-in role leaka
     recipes: [{ name: "orient", goal: "Orient the requester.", composition: ["guide", "exploratory", "requester", "direct"] }],
     sizing: [{ work: "an unfamiliar situation", chain: ["guide"] }],
     riskGate: "Add `guide` only when orientation materially helps the requester.",
-    briefGuidance: "The pipeline is an ordering reference. Use `guide` for orientation and keep the handoff compact.",
     loops: [{ requires: ["guide"], text: "A materially changed situation returns to `guide`." }],
     parallelism: [{ requires: ["guide"], text: "Run guides independently only for distinct situations." }],
     activationExamples: ["guide expl req"]
@@ -132,17 +127,13 @@ test("generic generators consume third-pack metadata without built-in role leaka
   assert.deepEqual(validateCatalog(catalog), []);
   const pack = resolvePack("guide", catalog);
   const skill = generateSkill({ enabled: ["guide"], personas: pack.personas, pack: "guide", catalog });
-  const brief = generateBrief({ enabled: ["guide"], pack: "guide", catalog });
   const frontmatter = skill.match(/^---\n([\s\S]*?)\n---/)?.[1]?.replace(/\s+/g, " ") ?? "";
   assert.match(frontmatter, /exact enabled Staffed roles with behavioral modifiers or aliases: guide/);
   assert.doesNotMatch(frontmatter, /exploratory \(`expl`\)/);
-  for (const text of [skill, brief]) {
-    assert.match(text, /Guide collective/);
-    assert.match(text, /`guide`/);
-    assert.doesNotMatch(text, /\b(?:pm|reviewer|case-reviewer|investigator|interviewer|forensic-analyst)\b/);
-  }
+  assert.match(skill, /Guide collective/);
+  assert.match(skill, /`guide`/);
+  assert.doesNotMatch(skill, /\b(?:pm|reviewer|case-reviewer|investigator|interviewer|forensic-analyst)\b/);
   assert.match(skill, /Run guides independently only for distinct situations/);
-  assert.match(brief, /Use `guide` for orientation/);
 });
 
 test("npm pack dry-run contains runtime and preview files without dependencies or a tarball", () => {
@@ -151,9 +142,10 @@ test("npm pack dry-run contains runtime and preview files without dependencies o
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(result.stdout)[0];
   const files = new Set(report.files.map((file) => file.path));
-  for (const path of ["bin/staffed.mjs", "src/packs.mjs", "catalog.json", "packs/detective/agents/investigator.md"]) {
+  for (const path of ["bin/staffed.mjs", "src/packs.mjs", "src/legacy-brief-cleanup.mjs", "catalog.json", "packs/detective/agents/investigator.md"]) {
     assert.ok(files.has(path), `missing packed file ${path}`);
   }
+  assert.equal(files.has("src/brief.mjs"), false);
   const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
   for (const field of ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]) {
     assert.equal(Object.hasOwn(pkg, field), false, `${field} must remain absent`);
