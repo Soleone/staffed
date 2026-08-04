@@ -2,7 +2,7 @@
 
 Staff any project with coordinated subagent roles. Use with your favorite agent, e.g. pi or claude.
 
-https://github.com/user-attachments/assets/98118579-04cc-4db1-9a51-0908c3694a12
+https://github.com/user-attachments/assets/72cc52a0-1cad-4dc9-9078-daeee21e505c
 
 Staffed ships a stable product team covering every essential role.
 
