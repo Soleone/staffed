@@ -72,12 +72,27 @@ export function resolveProfile(name, cfg) {
   };
 }
 
+const PROFILE_KEYS = ["anthropic", "openai"];
+
+function matchesProfileProvider(profile, model) {
+  if (profile === "anthropic") return /^anthropic\/claude-/.test(model);
+  if (profile === "openai") return /^(?:openai|openai-codex)\//.test(model);
+  return false;
+}
+
 /** Validate models.json structure without reading or writing disk. */
 export function validateModelConfig(cfg) {
   const problems = [];
   const profiles = cfg?.profiles;
   if (!profiles || typeof profiles !== "object" || Array.isArray(profiles)) {
     return ["models.json: profiles must be an object"];
+  }
+  const keys = Object.keys(profiles);
+  for (const key of PROFILE_KEYS) {
+    if (!Object.hasOwn(profiles, key)) problems.push(`models.json: missing canonical profile "${key}"`);
+  }
+  for (const key of keys) {
+    if (!PROFILE_KEYS.includes(key)) problems.push(`models.json: unsupported profile "${key}"; use anthropic or openai`);
   }
   if (typeof cfg.profile !== "string" || !profiles[cfg.profile]) {
     problems.push(`models.json: default profile "${cfg.profile ?? ""}" does not exist`);
@@ -93,14 +108,21 @@ export function validateModelConfig(cfg) {
         continue;
       }
       try {
-        normalizeTier(raw[tier]);
+        const normalized = normalizeTier(raw[tier]);
+        if (!matchesProfileProvider(key, normalized.model)) {
+          problems.push(`models.json: profile "${key}" tier "${tier}" must use a model from the ${key} provider`);
+        }
       } catch (error) {
         problems.push(`models.json: profile "${key}" tier "${tier}": ${error.message}`);
       }
     }
     if (Object.hasOwn(raw, "strong")) {
       try {
-        if (!normalizeTier(raw.strong)) throw new Error("tier config must not be null");
+        const normalized = normalizeTier(raw.strong);
+        if (!normalized) throw new Error("tier config must not be null");
+        if (!matchesProfileProvider(key, normalized.model)) {
+          problems.push(`models.json: profile "${key}" tier "strong" must use a model from the ${key} provider`);
+        }
       } catch (error) {
         problems.push(`models.json: profile "${key}" tier "strong": ${error.message}`);
       }
@@ -122,6 +144,9 @@ export function setTier(profileKey, tier, { model, thinking }) {
     thinking: thinking === "none" ? null : (thinking ?? current.thinking),
   };
   if (!next.model) throw new Error(`tier "${tier}" has no model yet — pass --model`);
+  if (!matchesProfileProvider(key, next.model)) {
+    throw new Error(`profile "${key}" requires a model from the ${key} provider`);
+  }
 
   cfg.profiles[key][tier] = next.thinking ? next : { model: next.model };
   // A tier the user has now declared by hand is no longer an unverified guess of ours.
@@ -137,7 +162,7 @@ export function setTier(profileKey, tier, { model, thinking }) {
 /** Set the default profile. */
 export function setProfile(key) {
   const cfg = loadConfig();
-  if (!cfg.profiles?.[key]) throw new Error(`unknown profile "${key}"`);
+  if (!PROFILE_KEYS.includes(key) || !cfg.profiles?.[key]) throw new Error(`unknown profile "${key}"`);
   cfg.profile = key;
   saveConfig(cfg);
   return key;

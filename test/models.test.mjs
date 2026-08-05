@@ -5,8 +5,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { EFFORTS, TIERS, loadPersonas } from "../src/personas.mjs";
-import { loadConfig, resolveProfile, validateModelConfig } from "../src/models.mjs";
+import { loadConfig, resolveProfile, setProfile, setTier, validateModelConfig } from "../src/models.mjs";
 import { plan } from "../src/install.mjs";
+import { HOSTS } from "../src/hosts.mjs";
 import { printTiers } from "../src/cli.mjs";
 
 test("canonical tiers and persona assignments are exact", () => {
@@ -39,14 +40,33 @@ test("provider profiles resolve the approved four mappings", () => {
   });
 });
 
-test("claude profile resolves exact aliases and the former identifier is unknown", () => {
-  assert.deepEqual(resolveProfile("claude").map, {
-    fast: { model: "haiku", thinking: null },
-    balanced: { model: "sonnet", thinking: null },
-    strong: { model: "sonnet", thinking: null },
-    deep: { model: "opus", thinking: null },
-  });
-  assert.throws(() => resolveProfile(["claude", "code"].join("-")), /unknown profile/);
+test("only canonical provider profiles and matching model namespaces are valid", () => {
+  const cfg = loadConfig();
+  assert.deepEqual(Object.keys(cfg.profiles).sort(), ["anthropic", "openai"]);
+  for (const removed of ["pi", "claude", "claude-code", "inherit"]) {
+    assert.throws(() => resolveProfile(removed), /unknown profile/);
+  }
+
+  const extra = structuredClone(cfg);
+  extra.profiles.pi = structuredClone(extra.profiles.anthropic);
+  assert.ok(validateModelConfig(extra).some((problem) => /unsupported profile "pi"/.test(problem)));
+
+  const mismatched = structuredClone(cfg);
+  mismatched.profiles.anthropic.fast.model = "openai/claude-opus-5";
+  assert.ok(validateModelConfig(mismatched).some((problem) => /anthropic.*fast.*anthropic provider/.test(problem)));
+  assert.throws(
+    () => HOSTS.claude.mapTier({ model: "openai/claude-opus-5", thinking: "medium" }),
+    /requires an Anthropic provider model/,
+  );
+
+  const before = loadConfig();
+  assert.throws(
+    () => setTier("anthropic", "fast", { model: "openai/claude-opus-5" }),
+    /requires a model from the anthropic provider/,
+  );
+  assert.deepEqual(loadConfig(), before);
+  assert.throws(() => setProfile("pi"), /unknown profile "pi"/);
+  assert.deepEqual(loadConfig(), before);
 });
 
 test("legacy three-tier profile clones balanced into strong without mutation", () => {

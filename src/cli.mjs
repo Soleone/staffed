@@ -19,7 +19,7 @@ const HELP = `staffed — coordinated subagent roles for any project
 roster
   staffed enable                 enable every persona; inherit the parent model
   staffed enable --profile openai  enable with cost/time-oriented OpenAI defaults
-  staffed enable --profile anthropic  enable with Anthropic defaults for Pi
+  staffed enable --profile anthropic  enable with Anthropic provider defaults
   staffed enable pm architect    enable only these (additive)
   staffed disable                disable every persona we enabled
   staffed disable pm             disable only these
@@ -209,7 +209,6 @@ async function doctor(agentName) {
 
   console.log(`\nmodels known to this install: ${known.size || "none"}`);
   for (const key of Object.keys(cfg.profiles)) {
-    if (key === "inherit") continue;
     const { map, fallbacks = [] } = resolveProfile(key, cfg);
     console.log(`\nprofile ${key}`);
     for (const [tier, t] of Object.entries(map)) {

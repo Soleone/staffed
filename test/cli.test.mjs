@@ -149,20 +149,23 @@ test("breaking selector names reject and agent/profile axes remain independent",
       [["status", "--agent", formerAgent], new RegExp(`unknown agent "${formerAgent}"`)],
       [["status", "--agent"], /--agent requires a value/],
       [["enable", "builder", "--scope", "project", "--agent", "pi", "--profile", formerAgent], new RegExp(`unknown profile "${formerAgent}"`)],
+      [["enable", "builder", "--scope", "project", "--agent", "pi", "--profile", "claude"], /unknown profile "claude"/],
+      [["enable", "builder", "--scope", "project", "--agent", "pi", "--profile", "pi"], /unknown profile "pi"/],
+      [["enable", "builder", "--scope", "project", "--agent", "pi", "--profile", "inherit"], /unknown profile "inherit"/],
     ];
     for (const [args, message] of cases) {
       const result = runResult(args, { cwd, env: { HOME: home } });
       assert.equal(result.status, 1, `${args.join(" ")} unexpectedly exited ${result.status}`);
       assert.match(result.stderr, message);
     }
-    run(["enable", "builder", "--scope", "project", "--profile", "claude", "--no-skill"], {
+    run(["enable", "builder", "--scope", "project", "--profile", "anthropic", "--no-skill"], {
       cwd,
       env: { HOME: home },
     });
     const manifest = JSON.parse(readFileSync(join(cwd, ".pi", "agents", ".staffed.json"), "utf8"));
     assert.equal(manifest.host, "pi");
-    assert.equal(manifest.files["builder.md"].profile, "claude");
-    assert.equal(manifest.files["builder.md"].model, "sonnet");
+    assert.equal(manifest.files["builder.md"].profile, "anthropic");
+    assert.equal(manifest.files["builder.md"].model, "anthropic/claude-opus-5");
   } finally {
     rmSync(home, { recursive: true, force: true });
     rmSync(cwd, { recursive: true, force: true });

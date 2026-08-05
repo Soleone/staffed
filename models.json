@@ -2,7 +2,7 @@
   "//": [
     "Tier -> { model, thinking } map. THIS IS THE ONLY FILE TO EDIT WHEN MODELS CHANGE.",
     "Each persona declares a tier (fast|balanced|strong|deep) in its own file; this maps tiers",
-    "to concrete models for one host, so it stays correct as the roster grows.",
+    "to provider models; each host adapts their spelling while the roster grows.",
     "",
     "'model:thinking' shorthand is accepted and normalized. Thinking is stored apart",
     "from the model because hosts spell it differently: pi appends ':level', while",
@@ -32,52 +32,6 @@
       "fast": {
         "model": "anthropic/claude-haiku-4-5",
         "thinking": "low"
-      }
-    },
-    "pi": {
-      "deep": {
-        "model": "claude-opus-5",
-        "thinking": "xhigh"
-      },
-      "strong": {
-        "model": "claude-sonnet-4-6",
-        "thinking": "medium"
-      },
-      "balanced": {
-        "model": "claude-sonnet-4-6",
-        "thinking": "medium"
-      },
-      "fast": {
-        "model": "claude-sonnet-4-5",
-        "thinking": "low"
-      }
-    },
-    "claude": {
-      "deep": {
-        "model": "opus"
-      },
-      "strong": {
-        "model": "sonnet"
-      },
-      "balanced": {
-        "model": "sonnet"
-      },
-      "fast": {
-        "model": "haiku"
-      }
-    },
-    "inherit": {
-      "deep": {
-        "model": "inherit"
-      },
-      "strong": {
-        "model": "inherit"
-      },
-      "balanced": {
-        "model": "inherit"
-      },
-      "fast": {
-        "model": "inherit"
       }
     },
     "openai": {

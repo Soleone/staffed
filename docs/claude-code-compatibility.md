@@ -29,12 +29,13 @@ Claude Desktop Code uses these same paths. The generated skill is the discovery 
 orchestration path. Using `--no-skill` leaves installed roles undiscoverable unless the
 caller supplies its own instructions.
 
-Plain enable inherits the parent model. `--profile claude` uses Claude Code's `haiku`,
-`sonnet`, and `opus` family aliases. `--agent claude` and `--profile claude` are
-independent: the first chooses the integration and paths, while the second chooses
-model aliases. Alias availability depends on the account and organization. `--link` is
-unavailable because explicit-only activation requires a rendered Claude-specific
-description.
+Plain enable inherits the parent model. `--profile anthropic` selects the shared
+Anthropic tier mapping; Claude Code renders its provider model IDs as `haiku`, `sonnet`,
+and `opus` family aliases and drops Pi-only thinking levels. `--agent claude` chooses
+the integration and paths, while `--profile anthropic` chooses the model provider
+mapping. The OpenAI profile is not valid for Claude Code. Alias availability depends on
+the account and organization. `--link` is unavailable because explicit-only activation
+requires a rendered Claude-specific description.
 
 ## Compatibility evidence
 
@@ -57,7 +58,7 @@ Before release against a new Claude Code version:
 
 1. Record the Claude Code/Desktop version and test date.
 2. In both CLI and Desktop Code, test project and user scopes, full and partial
-   rosters, inherited and `claude` profiles, and skill-only discovery.
+   rosters, inherited and `anthropic` profiles, and skill-only discovery.
 3. Confirm `/staffed` and both natural-language activation phrases dispatch only
    installed roles and produce one persona's contracted artifact.
 4. Submit ordinary edit, explanation, review, product-question, and docs-rewrite

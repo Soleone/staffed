@@ -21,6 +21,22 @@ staffed enable
 staffed status
 ```
 
+For a quick start with pinned model tiers, the two most popular profiles are
+`openai` and `anthropic`:
+
+```bash
+# Pi with OpenAI models
+staffed enable --profile openai
+
+# Pi with Anthropic models
+staffed enable --profile anthropic
+
+# Claude Code CLI or Claude Desktop Code
+staffed enable --agent claude --profile anthropic
+```
+
+Plain `staffed enable` inherits the parent session model instead of pinning a profile.
+
 Or try it without installing globally:
 
 ```bash
@@ -114,6 +130,6 @@ Most roles write to `artifacts/<role>/index.md`. `builder` changes the code; `re
 
 The built-in Product pack is the default. The experimental Detective preview is available through `staffed pack use detective`; see [Detective preview](docs/detective-pack.md).
 
-Roles have a default tier (`fast`, `balanced`, `strong`, or `deep`) and effort level. Plain `enable` inherits the parent session model. `--profile openai` and `--profile anthropic` stamp provider-qualified Pi model defaults into rendered copies; `--profile claude` uses Claude Code's `haiku`, `sonnet`, and `opus` aliases. The legacy `pi` profile remains available for existing installs. Use `staffed tier`, `staffed doctor`, and `staffed status` to inspect mappings. Durable tier changes require a clone or persistent install, not a temporary `pnpm dlx` cache.
+Roles have a default tier (`fast`, `balanced`, `strong`, or `deep`) and effort level. Plain `enable` inherits the parent session model. The only model profiles are `openai` and `anthropic`. Pi renders their provider-qualified model IDs and thinking levels; Claude Code accepts the `anthropic` profile and renders its models as `haiku`, `sonnet`, and `opus` aliases without per-agent thinking. Use `staffed tier`, `staffed doctor`, and `staffed status` to inspect mappings. Durable tier changes require a clone or persistent install, not a temporary `pnpm dlx` cache.
 
 For modifier definitions and recipes, see [Composition](docs/composition.md). For Claude Code and Desktop surface details, see the [compatibility guide](docs/claude-code-compatibility.md).

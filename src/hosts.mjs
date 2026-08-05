@@ -35,6 +35,16 @@ const render = (fields, body) => `---\n${frontmatter(fields)}\n---\n${body}`;
 // between hosts, and the reason tier config keeps model and thinking apart.
 const piModel = (t) => (t ? (t.thinking ? `${t.model}:${t.thinking}` : t.model) : undefined);
 const modelOnly = (t) => t?.model;
+const claudeTier = (tier) => {
+  if (!tier) return undefined;
+  if (!tier.model.startsWith("anthropic/")) {
+    throw new Error(`Claude Code requires an Anthropic provider model, got "${tier.model}"`);
+  }
+  const id = tier.model.slice("anthropic/".length);
+  const family = id.match(/^claude-(haiku|sonnet|opus)(?:-|$)/)?.[1];
+  if (!family) throw new Error(`Anthropic model "${tier.model}" has no Claude Code family alias`);
+  return { model: family, thinking: null };
+};
 
 export const HOSTS = {
   pi: {
@@ -57,11 +67,12 @@ export const HOSTS = {
     // Claude Desktop's Code tab reads the same .claude configuration as the CLI.
     // Chat and Cowork are separate surfaces and are not targets of this host.
     supported: true,
-    allowedProfiles: ["none", "inherit", "claude"],
+    allowedProfiles: ["none", "anthropic"],
     userDir: () => join(homedir(), ".claude", "agents"),
     projectDir: (cwd) => join(cwd, ".claude", "agents"),
     skillDir: (scope, cwd) => (scope === "project" ? join(cwd, ".claude", "skills") : join(homedir(), ".claude", "skills")),
     filename: (p) => `${p.name}.md`,
+    mapTier: claudeTier,
     render: (p, tier) =>
       render(
         {
@@ -75,7 +86,7 @@ export const HOSTS = {
       ),
     notes: [
       "Supports Claude Code CLI and the Code tab in Claude Desktop; Chat and Cowork are separate surfaces.",
-      "Model names differ (opus/sonnet/haiku) — use the claude profile.",
+      "The anthropic profile renders as Claude Code's opus/sonnet/haiku family aliases.",
       "Has no per-agent thinking level, so the thinking half of a tier is dropped.",
     ],
   },

@@ -136,13 +136,6 @@ function validateProfile(host, profile) {
   if (host.allowedProfiles && !host.allowedProfiles.includes(profile.key)) {
     throw new Error(`profile "${profile.key}" is not valid for ${host.label}; use ${host.allowedProfiles.join(", ")}`);
   }
-  if (host.key === "claude" && profile.map) {
-    for (const value of Object.values(profile.map)) {
-      if (value.thinking || !["inherit", "haiku", "sonnet", "opus"].includes(value.model)) {
-        throw new Error(`profile "${profile.key}" contains a model Claude Code cannot safely render`);
-      }
-    }
-  }
 }
 
 function recursiveMarkdown(dir, out = []) {
@@ -186,7 +179,9 @@ export function plan({ host: hostName, scope = "user", profile = "none", mode = 
   if (mode === "link" && host.key === "claude") throw new Error("--link is unavailable for Claude Code because its explicit-only description must be rendered.");
   if (mode === "link" && isEphemeral(ROOT)) throw new Error(`--link refused: this package lives in an ephemeral directory (${ROOT}).\nLinks would break as soon as the cache is cleared. Use the default copy mode, or clone the repo and link from there.`);
   const items = select(personas, only).map((persona) => {
-    const file = host.filename(persona), path = join(dir, file), tier = tierFor(persona, prof);
+    const file = host.filename(persona), path = join(dir, file);
+    const profileTier = tierFor(persona, prof);
+    const tier = host.mapTier ? host.mapTier(profileTier) : profileTier;
     return { persona, file, path, tier, content: mode === "link" ? null : host.render(persona, tier), ...inspectFile(path, manifest?.files[file]) };
   });
   const previousItems = switching ? previousPack.personas.map((persona) => {

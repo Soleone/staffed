@@ -75,11 +75,15 @@ test("Claude legacy cleanup fails closed on malformed tracked markers before rol
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
 
-test("Claude profile rendering retains approved aliases and rejects incompatible profiles", () => {
+test("Claude adapts the Anthropic provider profile to family aliases", () => {
   const cwd = mkdtempSync(join(tmpdir(), "staffed-claude-profile-"));
   try {
-    enablePrepared({ host: "claude", scope: "project", cwd, only: ["builder"], profile: "claude", skill: false });
-    assert.match(readFileSync(join(cwd, ".claude", "agents", "builder.md"), "utf8"), /^model: sonnet$/m);
+    const result = enablePrepared({ host: "claude", scope: "project", cwd, only: ["builder", "pm"], profile: "anthropic", skill: false });
+    assert.match(readFileSync(join(cwd, ".claude", "agents", "builder.md"), "utf8"), /^model: opus$/m);
+    assert.match(readFileSync(join(cwd, ".claude", "agents", "pm.md"), "utf8"), /^model: sonnet$/m);
+    assert.equal(result.manifest.files["builder.md"].profile, "anthropic");
+    assert.equal(result.manifest.files["builder.md"].model, "opus");
+    assert.equal(Object.hasOwn(result.manifest.files["builder.md"], "thinking"), false);
     assert.throws(() => enablePrepared({ host: "claude", scope: "project", cwd, only: ["builder"], profile: "openai" }), /not valid/);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
