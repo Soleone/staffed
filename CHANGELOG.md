@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.7.0](https://github.com/Soleone/staffed/compare/v1.6.0...v1.7.0) (2026-08-05)
+
+
+### Features
+
+* codex cli and desktop compatibility ([f2fc0a7](https://github.com/Soleone/staffed/commit/f2fc0a73423534a689e03a331ed47e3d15af8bba))
+* enable Claude Code and add Anthropic model profile ([1b1e8e6](https://github.com/Soleone/staffed/commit/1b1e8e676c7592d82449783f6083f5b8073bafe4))
+* unify profiles around model providers ([005d607](https://github.com/Soleone/staffed/commit/005d607055091280f90994a98e1f51d62730158f))
+
 ## [1.6.0](https://github.com/Soleone/staffed/compare/v1.5.0...v1.6.0) (2026-08-04)
 
 
