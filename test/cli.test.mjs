@@ -42,7 +42,7 @@ test("default agent detector handles exact-one, ambiguity, fallback, and regular
     mkdirSync(pi, { recursive: true });
     assert.throws(
       () => selectDefaultAgent({ home }),
-      /both Pi and Claude Code were detected; pass --agent pi or --agent claude/,
+      /multiple agent hosts were detected \(pi, claude\); pass --agent pi or --agent claude/,
     );
     rmSync(join(home, ".pi"), { recursive: true, force: true });
     rmSync(join(home, ".claude"), { recursive: true, force: true });
@@ -55,10 +55,10 @@ test("default agent detector handles exact-one, ambiguity, fallback, and regular
 
 test("help documents default agent selection and detection exceptions", () => {
   const output = run(["help"]);
-  assert.match(output, /probe ~\/\.pi\/agent and ~\/\.claude when --agent is omitted/);
+  assert.match(output, /probe ~\/\.pi\/agent, ~\/\.codex, and ~\/\.claude when --agent is omitted/);
   assert.match(output, /Exactly one installed agent is selected automatically/);
-  assert.match(output, /If both are installed, pass\s+--agent pi or --agent claude/);
-  assert.match(output, /If neither is installed, a warning is printed and Pi\s+is used as the fallback/);
+  assert.match(output, /If multiple are installed,\s+choose one with --agent/);
+  assert.match(output, /If none is installed, a warning is printed and Pi is used\s+as the fallback/);
   assert.match(output, /Agent-independent commands \(help, list, compose, pack list,\s+tier\/models, validate\) skip detection/);
 });
 
@@ -119,7 +119,7 @@ test("no-install fallback is visible, read-only for status, and writes only Pi o
   try {
     const status = runResult(["status"], { env: { HOME: home } });
     assert.equal(status.status, 0, status.stderr);
-    assert.match(status.stderr, /warning: no Pi or Claude Code configuration directory detected; defaulting to agent pi/);
+    assert.match(status.stderr, /warning: no Pi, OpenAI Codex, or Claude Code configuration directory detected; defaulting to agent pi/);
     assert.match(status.stdout, /^agent\s+pi \(pi\)$/m);
     assert.equal(existsSync(join(home, ".pi")), false);
 
@@ -210,7 +210,7 @@ test("Claude user-scope CLI lifecycle enables, reports, and cleanly disables", (
 test("project enable records exact pinned install facts and status uses them", () => {
   const cwd = mkdtempSync(join(tmpdir(), "staffed-enable-"));
   try {
-    run(["enable", "builder", "--scope", "project", "--profile", "openai", "--no-skill"], { cwd });
+    run(["enable", "builder", "--agent", "pi", "--scope", "project", "--profile", "openai", "--no-skill"], { cwd });
     const manifest = JSON.parse(readFileSync(join(cwd, ".pi", "agents", ".staffed.json"), "utf8"));
     assert.deepEqual(
       manifest.files["builder.md"],
@@ -225,7 +225,7 @@ test("project enable records exact pinned install facts and status uses them", (
     );
     assert.match(manifest.files["builder.md"].hash, /^[a-f0-9]{16}$/);
 
-    const status = run(["status", "--scope", "project"], { cwd });
+    const status = run(["status", "--agent", "pi", "--scope", "project"], { cwd });
     assert.match(status, /persona\s+tier\s+effort\s+state\s+installed/);
     assert.match(status, /builder\s+strong\s+low\s+enabled\s+strong → openai-codex\/gpt-5\.6-sol:medium \(openai\)/);
   } finally {
@@ -236,7 +236,7 @@ test("project enable records exact pinned install facts and status uses them", (
 test("Anthropic profile records provider-qualified Pi model facts", () => {
   const cwd = mkdtempSync(join(tmpdir(), "staffed-anthropic-"));
   try {
-    run(["enable", "builder", "--scope", "project", "--profile", "anthropic", "--no-skill"], { cwd });
+    run(["enable", "builder", "--agent", "pi", "--scope", "project", "--profile", "anthropic", "--no-skill"], { cwd });
     const manifest = JSON.parse(readFileSync(join(cwd, ".pi", "agents", ".staffed.json"), "utf8"));
     assert.equal(manifest.files["builder.md"].profile, "anthropic");
     assert.equal(manifest.files["builder.md"].model, "anthropic/claude-opus-5");
@@ -250,12 +250,12 @@ test("Anthropic profile records provider-qualified Pi model facts", () => {
 test("plain enable records inherited mapping without a concrete model", () => {
   const cwd = mkdtempSync(join(tmpdir(), "staffed-inherit-"));
   try {
-    run(["enable", "builder", "--scope", "project", "--no-skill"], { cwd });
+    run(["enable", "builder", "--agent", "pi", "--scope", "project", "--no-skill"], { cwd });
     const manifest = JSON.parse(readFileSync(join(cwd, ".pi", "agents", ".staffed.json"), "utf8"));
     assert.equal(manifest.files["builder.md"].profile, "none");
     assert.equal(manifest.files["builder.md"].tier, "strong");
     assert.ok(!Object.hasOwn(manifest.files["builder.md"], "model"));
-    const status = run(["status", "--scope", "project"], { cwd });
+    const status = run(["status", "--agent", "pi", "--scope", "project"], { cwd });
     assert.match(status, /strong → inherited \(none\)/);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
@@ -265,7 +265,7 @@ test("plain enable records inherited mapping without a concrete model", () => {
 test("status reports legacy manifest mapping as unknown instead of resolving it", () => {
   const cwd = mkdtempSync(join(tmpdir(), "staffed-legacy-"));
   try {
-    run(["enable", "builder", "--scope", "project", "--profile", "openai", "--no-skill"], { cwd });
+    run(["enable", "builder", "--agent", "pi", "--scope", "project", "--profile", "openai", "--no-skill"], { cwd });
     const path = join(cwd, ".pi", "agents", ".staffed.json");
     const manifest = JSON.parse(readFileSync(path, "utf8"));
     delete manifest.files["builder.md"].tier;
@@ -273,7 +273,7 @@ test("status reports legacy manifest mapping as unknown instead of resolving it"
     delete manifest.files["builder.md"].thinking;
     writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
 
-    const status = run(["status", "--scope", "project"], { cwd });
+    const status = run(["status", "--agent", "pi", "--scope", "project"], { cwd });
     assert.match(status, /unknown \(legacy manifest; re-enable to refresh\)/);
     assert.doesNotMatch(status, /builder.*gpt-5\.6-sol/);
   } finally {
@@ -284,13 +284,13 @@ test("status reports legacy manifest mapping as unknown instead of resolving it"
 test("status reports a pinned record missing model metadata as incomplete, not inherited", () => {
   const cwd = mkdtempSync(join(tmpdir(), "staffed-incomplete-"));
   try {
-    run(["enable", "builder", "--scope", "project", "--profile", "openai", "--no-skill"], { cwd });
+    run(["enable", "builder", "--agent", "pi", "--scope", "project", "--profile", "openai", "--no-skill"], { cwd });
     const path = join(cwd, ".pi", "agents", ".staffed.json");
     const manifest = JSON.parse(readFileSync(path, "utf8"));
     delete manifest.files["builder.md"].model;
     writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
 
-    const status = run(["status", "--scope", "project"], { cwd });
+    const status = run(["status", "--agent", "pi", "--scope", "project"], { cwd });
     assert.match(status, /builder.*unknown \(incomplete manifest; re-enable to refresh\)/);
     assert.doesNotMatch(status, /builder.*inherited/);
   } finally {

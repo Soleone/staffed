@@ -35,6 +35,14 @@ const render = (fields, body) => `---\n${frontmatter(fields)}\n---\n${body}`;
 // between hosts, and the reason tier config keeps model and thinking apart.
 const piModel = (t) => (t ? (t.thinking ? `${t.model}:${t.thinking}` : t.model) : undefined);
 const modelOnly = (t) => t?.model;
+const codexTier = (tier) => {
+  if (!tier) return undefined;
+  const model = tier.model.match(/^(?:openai|openai-codex)\/(.+)$/)?.[1];
+  if (!model) throw new Error(`Codex requires an OpenAI provider model, got "${tier.model}"`);
+  return { model, thinking: tier.thinking };
+};
+const tomlString = (value) => JSON.stringify(String(value));
+const codexHome = () => process.env.CODEX_HOME || join(homedir(), ".codex");
 const claudeTier = (tier) => {
   if (!tier) return undefined;
   if (!tier.model.startsWith("anthropic/")) {
@@ -59,6 +67,32 @@ export const HOSTS = {
     notes: [
       'subagent defaults to agentScope: "user", so project-scope installs are invisible until a call passes agentScope: "both".',
       "Personas cannot ship via `pi install`: a pi package carries extensions, skills, prompts and themes only, never agents.",
+    ],
+  },
+
+  codex: {
+    label: "OpenAI Codex",
+    // Codex CLI and the desktop app share these user/project configuration conventions.
+    supported: true,
+    allowedProfiles: ["none", "openai"],
+    userDir: () => join(codexHome(), "agents"),
+    projectDir: (cwd) => join(cwd, ".codex", "agents"),
+    skillDir: (scope, cwd) => (scope === "project" ? join(cwd, ".agents", "skills") : join(homedir(), ".agents", "skills")),
+    filename: (p) => `${p.name}.toml`,
+    mapTier: codexTier,
+    render: (p, tier) =>
+      [
+        `name = ${tomlString(p.name)}`,
+        `description = ${tomlString('Staffed role; use only after $staffed, "use Staffed", or "staff this project". Never select for ordinary prompts. ' + p.meta.description)}`,
+        ...(tier?.model ? [`model = ${tomlString(tier.model)}`] : []),
+        ...(tier?.thinking ? [`model_reasoning_effort = ${tomlString(tier.thinking)}`] : []),
+        `developer_instructions = ${tomlString(p.body)}`,
+        "",
+      ].join("\n"),
+    notes: [
+      "Supports Codex CLI and the Codex experience in the ChatGPT desktop app.",
+      "Custom agents are TOML files under .codex/agents; Staffed's Markdown persona bodies are preserved as developer_instructions.",
+      "Skills use the shared .agents/skills location required by Codex.",
     ],
   },
 
@@ -114,12 +148,13 @@ function isDirectory(path) {
   }
 }
 
-export function selectDefaultAgent({ home = homedir() } = {}) {
+export function selectDefaultAgent({ home = homedir(), env = process.env } = {}) {
   const detected = [];
   if (isDirectory(join(home, ".pi", "agent"))) detected.push("pi");
+  if (isDirectory(env.CODEX_HOME || join(home, ".codex"))) detected.push("codex");
   if (isDirectory(join(home, ".claude"))) detected.push("claude");
-  if (detected.length === 2) {
-    throw new Error("both Pi and Claude Code were detected; pass --agent pi or --agent claude");
+  if (detected.length > 1) {
+    throw new Error(`multiple agent hosts were detected (${detected.join(", ")}); pass --agent ${detected.join(" or --agent ")}`);
   }
   return detected.length
     ? { key: detected[0], detected, reason: "detected" }

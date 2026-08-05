@@ -58,6 +58,14 @@ test("only canonical provider profiles and matching model namespaces are valid",
     () => HOSTS.claude.mapTier({ model: "openai/claude-opus-5", thinking: "medium" }),
     /requires an Anthropic provider model/,
   );
+  assert.deepEqual(
+    HOSTS.codex.mapTier({ model: "openai-codex/gpt-5.6-sol", thinking: "high" }),
+    { model: "gpt-5.6-sol", thinking: "high" },
+  );
+  assert.throws(
+    () => HOSTS.codex.mapTier({ model: "anthropic/claude-opus-5", thinking: "medium" }),
+    /requires an OpenAI provider model/,
+  );
 
   const before = loadConfig();
   assert.throws(

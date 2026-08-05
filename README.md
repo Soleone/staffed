@@ -1,6 +1,6 @@
 # Staffed
 
-Staff any project with coordinated subagent roles. Use with your favorite agent, e.g. pi or claude.
+Staff any project with coordinated subagent roles. Use with Pi, OpenAI Codex, or Claude Code.
 
 https://github.com/user-attachments/assets/72cc52a0-1cad-4dc9-9078-daeee21e505c
 
@@ -31,6 +31,9 @@ staffed enable --profile openai
 # Pi with Anthropic models
 staffed enable --profile anthropic
 
+# OpenAI Codex CLI or desktop app
+staffed enable --agent codex --profile openai
+
 # Claude Code CLI or Claude Desktop Code
 staffed enable --agent claude --profile anthropic
 ```
@@ -45,7 +48,7 @@ pnpm dlx staffed status
 # npx staffed ... works too
 ```
 
-`enable` installs personas and the `staffed` discovery skill. `status` confirms what is installed. By default, installation is user-scoped; use `--scope project` to install into `./.pi/agents/` for a project.
+`enable` installs personas and the `staffed` discovery skill. `status` confirms what is installed. By default, installation is user-scoped; use `--scope project` for repository-local configuration. Host-specific paths are documented below.
 
 ## Roles and modifiers
 
@@ -112,9 +115,17 @@ Each role writes its primary result to `artifacts/<role>/index.md`; the artifact
 | `staffed doctor` | check model IDs against this Pi installation |
 | `staffed validate` | validate the roster |
 
-Useful options: `--agent pi|claude|opencode`, `--scope user|project`, `--pack`, `--profile`, `--model`, `--thinking`, `--link`, `--force`, `--dry-run`, and `--no-skill`.
+Useful options: `--agent pi|codex|claude|opencode`, `--scope user|project`, `--pack`, `--profile`, `--model`, `--thinking`, `--link`, `--force`, `--dry-run`, and `--no-skill`.
 
-`--agent` selects where files are rendered; `--profile` selects render-time model defaults. They are independent. Without `--agent`, Staffed selects the one detected host; if both Pi and Claude are present, choose explicitly. Pi and Claude Code are supported; the Claude integration works in both the CLI and Claude Desktop's Code tab because those surfaces share `.claude` configuration. Claude Desktop Chat and Cowork are separate surfaces and are not supported by this integration. opencode remains gated, so requests for it fail rather than write unverified files.
+`--agent` selects where files are rendered; `--profile` selects render-time model defaults. They are independent. Without `--agent`, Staffed selects the one detected host; if multiple supported hosts are present, choose explicitly. Pi, OpenAI Codex, and Claude Code are supported. Codex uses `.codex/agents/*.toml` for custom agents and `.agents/skills/staffed/` for the shared CLI/desktop skill. The Claude integration works in both the CLI and Claude Desktop's Code tab because those surfaces share `.claude` configuration. Claude Desktop Chat and Cowork are separate surfaces and are not supported by that integration. opencode remains gated, so requests for it fail rather than write unverified files.
+
+| Host | User agents | User skill | Project agents | Project skill |
+|---|---|---|---|---|
+| Pi | `~/.pi/agent/agents` | `~/.pi/agent/skills/staffed` | `.pi/agents` | `.pi/skills/staffed` |
+| OpenAI Codex | `$CODEX_HOME/agents` (default `~/.codex/agents`) | `~/.agents/skills/staffed` | `.codex/agents` | `.agents/skills/staffed` |
+| Claude Code | `~/.claude/agents` | `~/.claude/skills/staffed` | `.claude/agents` | `.claude/skills/staffed` |
+
+Codex custom-agent files are TOML by specification; Staffed preserves each source Markdown persona body inside `developer_instructions`. Codex discovers repository instructions from `AGENTS.md` independently, so Staffed does not modify that file. See [Codex compatibility](docs/codex-compatibility.md).
 
 `enable` and `disable` only manage files Staffed owns. They do not overwrite foreign or locally modified files without `--force`. One pack is active per install scope. `list` and `compose` show the catalog; use `status` for the installed state.
 

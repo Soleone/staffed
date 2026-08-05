@@ -43,6 +43,11 @@ function chain(stages) {
 /** Generate SKILL.md for a specific set of enabled personas. */
 export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: packName = DEFAULT_PACK, catalog }) {
   const claude = hostKey === "claude";
+  const codex = hostKey === "codex";
+  const codexOrClaude = codex || claude;
+  const invocation = claude ? "/staffed" : codex ? "$staffed" : "/skill:staffed";
+  const workerLabel = claude ? "Agent" : codex ? "Codex subagent" : "subagent";
+  const dispatchTool = claude ? "Agent" : codex ? "Codex subagents" : "the `subagent` tool";
   const pack = resolvePack(packName, catalog);
   const set = new Set(enabled);
   const stages = pack.stages.filter((s) => set.has(s.name));
@@ -81,11 +86,11 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     `name: ${SKILL_NAME}`,
     "description: >-",
     ...wrap(
-      `Staff a project with ${pack.label}${pack.experimental ? " (experimental preview)" : ""}, a coordinated ${claude ? "Agent" : "subagent"} roster for ${pack.description.toLowerCase()} Use ` +
-        `ONLY when explicitly engaged: "staff this project", "use Staffed", ${claude ? "/staffed" : "/skill:staffed"}, ` +
+      `Staff a project with ${pack.label}${pack.experimental ? " (experimental preview)" : ""}, a coordinated ${workerLabel} roster for ${pack.description.toLowerCase()} Use ` +
+        `ONLY when explicitly engaged: "staff this project", "use Staffed", ${invocation}, ` +
         `or a request combining one of these exact enabled Staffed roles with behavioral modifiers or aliases: ${enabledRoleNames.join(", ")}. ` +
         `Examples: ${activationExamples}. ` +
-        `${claude ? "Do NOT use for ordinary prompts, including edits, bug fixes, refactors, reviews or questions" : "Do NOT use for ordinary edits, bug fixes, refactors, reviews or questions"} — those are ` +
+        `${codexOrClaude ? "Do NOT use for ordinary prompts, including edits, bug fixes, refactors, reviews or questions" : "Do NOT use for ordinary edits, bug fixes, refactors, reviews or questions"} — those are ` +
         "faster done directly.",
       84,
     )
@@ -97,7 +102,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     "",
     wrap(
       "You are the orchestrator, not a worker. Decompose the goal, dispatch the smallest sufficient " +
-        `set of personas with ${claude ? "Agent" : "the `subagent` tool"}, validate their output contracts, and loop back ` +
+        `set of personas with ${dispatchTool}, validate their output contracts, and loop back ` +
         "only when a material failure requires it. One persona is a valid staffed pipeline.",
     ),
     "",
@@ -212,7 +217,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     "",
     wrap(
       "Each artifact-owning persona writes to `artifacts/<agent>/index.md` and returns that path. " +
-        (claude ? "" : "For a canonical artifact dispatch, make one foreground `subagent` call with `output: false`; never set the tool's `output` path, because that path becomes authoritative and relocates the artifact under the subagent runtime. Do not revive or redispatch a completed persona merely to repair an output path. ") +
+        (codexOrClaude ? "" : "For a canonical artifact dispatch, make one foreground `subagent` call with `output: false`; never set the tool's `output` path, because that path becomes authoritative and relocates the artifact under the subagent runtime. Do not revive or redispatch a completed persona merely to repair an output path. ") +
         "Pass paths downstream, never the full document — that keeps context flat across a long " +
         "pipeline." +
         (artifactExceptions.length ? ` Exceptions: ${artifactExceptions.join("; ")}.` : ""),
@@ -224,7 +229,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     .map((loop) => `- ${loop.text}`);
   if (loops.length) body.push("", "## Loops", "", ...loops);
 
-  if (!claude) {
+  if (!codexOrClaude) {
     const parallel = pack.parallelism
       .filter((item) => item.requires.every(has))
       .map((item) => item.text);

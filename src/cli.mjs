@@ -59,10 +59,10 @@ options
   -h, --help        this
 
 agent selection
-  Agent-dependent commands probe ~/.pi/agent and ~/.claude when --agent is omitted.
-  Exactly one installed agent is selected automatically. If both are installed, pass
-  --agent pi or --agent claude. If neither is installed, a warning is printed and Pi
-  is used as the fallback. Agent-independent commands (help, list, compose, pack list,
+  Agent-dependent commands probe ~/.pi/agent, ~/.codex, and ~/.claude when --agent is omitted.
+  Exactly one installed agent is selected automatically. If multiple are installed,
+  choose one with --agent. If none is installed, a warning is printed and Pi is used
+  as the fallback. Agent-independent commands (help, list, compose, pack list,
   tier/models, validate) skip detection. Stateless list/compose default to the product
   catalog; pass --pack for another catalog. Use status for installed state.
 
@@ -179,8 +179,8 @@ export function printTiers(profileArg, cfg = loadConfig()) {
 
 /** Compare configured models against what this pi install actually offers. */
 async function doctor(agentName) {
-  if (agentName === "claude") {
-    console.error("doctor can inspect the Pi registry only; Claude alias entitlement cannot be verified here.");
+  if (agentName !== "pi") {
+    console.error(`doctor can inspect the Pi registry only; ${resolveHost(agentName).label} model availability cannot be verified here.`);
     return 1;
   }
   const { homedir } = await import("node:os");
@@ -296,8 +296,8 @@ function selectAgent(opts) {
   const selected = selectDefaultAgent();
   if (selected.reason === "legacy-default") {
     console.error(
-      "warning: no Pi or Claude Code configuration directory detected; defaulting to agent pi " +
-        "(use --agent claude to choose Claude Code)",
+      "warning: no Pi, OpenAI Codex, or Claude Code configuration directory detected; defaulting to agent pi " +
+        "(use --agent codex or --agent claude to choose another host)",
     );
   }
   return resolveHost(selected.key);

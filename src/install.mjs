@@ -112,6 +112,36 @@ function atomicReplace(path, content, mode) {
   }
 }
 
+function transactionalMutation(paths, mutate) {
+  const entries = [...new Set(paths)].map((path, index) => ({
+    path,
+    backup: join(dirname(path), `.staffed-backup-${process.pid}-${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`),
+    existed: pathExists(path),
+  }));
+  const staged = [];
+  try {
+    for (const entry of entries) {
+      if (entry.existed) renameSync(entry.path, entry.backup);
+      staged.push(entry);
+    }
+  } catch (error) {
+    for (const entry of staged) if (entry.existed && pathExists(entry.backup)) renameSync(entry.backup, entry.path);
+    throw error;
+  }
+  let result;
+  try {
+    result = mutate();
+  } catch (error) {
+    for (const entry of [...staged].reverse()) rmSync(entry.path, { recursive: true, force: true });
+    for (const entry of staged) {
+      if (entry.existed && pathExists(entry.backup)) renameSync(entry.backup, entry.path);
+    }
+    throw error;
+  }
+  for (const entry of staged) if (entry.existed) rmSync(entry.backup, { recursive: true, force: true });
+  return result;
+}
+
 function loadManifest(dir, context, { diagnostic = false } = {}) {
   const file = join(dir, MANIFEST);
   if (!existsSync(file)) return { manifest: null, manifestError: null };
@@ -138,28 +168,65 @@ function validateProfile(host, profile) {
   }
 }
 
-function recursiveMarkdown(dir, out = []) {
+function recursiveAgentFiles(dir, extension, out = []) {
   if (!existsSync(dir)) return out;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isSymbolicLink()) continue;
-    if (entry.isDirectory()) recursiveMarkdown(path, out);
-    else if (entry.isFile() && entry.name.endsWith(".md")) out.push(path);
+    if (entry.isDirectory()) recursiveAgentFiles(path, extension, out);
+    else if (entry.isFile() && entry.name.endsWith(extension)) out.push(path);
   }
   return out;
 }
 
-function declaredName(path) {
-  try { return readFileSync(path, "utf8").match(/^name:\s*([^\n]+)$/m)?.[1]?.trim() ?? null; }
-  catch { return null; }
+function codexDeclaredName(text, path) {
+  // Multiline TOML strings can contain assignment-looking lines. Without a full
+  // parser we cannot distinguish those safely, so reject the file before scanning.
+  if (text.includes('\"\"\"') || text.includes("'''")) {
+    throw new Error(`cannot safely inspect Codex agent name in ${path}`);
+  }
+  const assignment = text.match(/^(?:name|"name"|'name')\s*=\s*(.+)$/m);
+  // Codex treats the parsed TOML `name` field as authoritative. If a foreign
+  // agent uses a key/value spelling this dependency-free reader cannot decode
+  // conclusively, refuse the install rather than risk missing a collision.
+  if (!assignment) throw new Error(`cannot safely inspect Codex agent name in ${path}`);
+  const raw = assignment[1].trim();
+  if (raw.startsWith("'")) {
+    const literal = raw.match(/^'([^']*)'\s*(?:#.*)?$/);
+    if (literal) return literal[1];
+  } else if (raw.startsWith('"') && !raw.startsWith('\"\"\"')) {
+    let escaped = false;
+    for (let i = 1; i < raw.length; i++) {
+      if (escaped) { escaped = false; continue; }
+      if (raw[i] === "\\") { escaped = true; continue; }
+      if (raw[i] !== '"') continue;
+      const suffix = raw.slice(i + 1).trim();
+      if (suffix && !suffix.startsWith("#")) break;
+      try { return JSON.parse(raw.slice(0, i + 1)); } catch { break; }
+    }
+  }
+  throw new Error(`cannot safely inspect Codex agent name in ${path}`);
+}
+
+function declaredName(host, path) {
+  try {
+    const text = readFileSync(path, "utf8");
+    return host.key === "codex"
+      ? codexDeclaredName(text, path)
+      : text.match(/^name:\s*([^\n]+)$/m)?.[1]?.trim() ?? null;
+  } catch (error) {
+    if (host.key === "codex" && /cannot safely inspect/.test(error.message)) throw error;
+    return null;
+  }
 }
 
 function collisions(host, dir, items) {
-  if (host.key !== "claude") return [];
+  const extension = host.key === "claude" ? ".md" : host.key === "codex" ? ".toml" : null;
+  if (!extension) return [];
   const targets = new Set(items.map((i) => i.path));
   const names = new Set(items.map((i) => i.persona.name));
-  return recursiveMarkdown(dir).flatMap((path) => {
-    const name = declaredName(path);
+  return recursiveAgentFiles(dir, extension).flatMap((path) => {
+    const name = declaredName(host, path);
     return name && names.has(name) && !targets.has(path) ? [{ name, path }] : [];
   });
 }
@@ -176,7 +243,7 @@ export function plan({ host: hostName, scope = "user", profile = "none", mode = 
   const switching = Boolean(manifest && pack.key !== activePack);
   const personas = pack.personas;
   if (mode === "link" && prof.map) throw new Error("--link cannot be combined with a model profile: a rendered file is not a link to the source.");
-  if (mode === "link" && host.key === "claude") throw new Error("--link is unavailable for Claude Code because its explicit-only description must be rendered.");
+  if (mode === "link" && ["claude", "codex"].includes(host.key)) throw new Error(`--link is unavailable for ${host.label} because its host-specific agent format must be rendered.`);
   if (mode === "link" && isEphemeral(ROOT)) throw new Error(`--link refused: this package lives in an ephemeral directory (${ROOT}).\nLinks would break as soon as the cache is cleared. Use the default copy mode, or clone the repo and link from there.`);
   const items = select(personas, only).map((persona) => {
     const file = host.filename(persona), path = join(dir, file);
@@ -222,7 +289,7 @@ function discoveryStatus(host, scope, cwd, manifest, names, pack) {
 
 export function enable(opts) {
   const p = plan(opts); const { force = false, dryRun = false } = opts;
-  if (p.collisions.length) throw new Error(`Claude agent name collision(s):\n${p.collisions.map((c) => `  ${c.name}: ${c.path}`).join("\n")}`);
+  if (p.collisions.length) throw new Error(`${p.host.label} agent name collision(s):\n${p.collisions.map((c) => `  ${c.name}: ${c.path}`).join("\n")}`);
   if (p.switching && opts.skill === false && (p.manifest.discovery?.skill || p.manifest.references?.composition)) {
     throw new Error("--no-skill cannot switch a pack that has tracked discovery; switch normally, then disable discovery if needed");
   }
@@ -267,32 +334,39 @@ export function enable(opts) {
   }
   if (dryRun) return { ...p, wrote: [], dryRun: true };
   mkdirSync(p.dir, { recursive: true });
-  const discovery = { ...(p.manifest?.discovery ?? {}) };
-  const references = { ...(p.manifest?.references ?? {}) };
-  if (legacyCleanup) {
-    if (legacyCleanup.action === "remove-block") atomicReplace(legacyCleanup.path, legacyCleanup.content, legacyCleanup.mode);
-    delete discovery.brief;
-  }
-  // Commit discovery first with same-directory atomic replacements. Forced replacement
-  // removes/replaces only the path entry itself, so symlink targets and directory contents are safe.
-  for (const [key, item] of desired) {
-    atomicReplace(item.path, item.content);
-    const record = { type: "copy", hash: hashText(item.content) };
-    if (key === "skill") discovery.skill = record;
-    else references.composition = record;
-  }
-  const wrote = [];
-  if (p.switching) {
-    const incoming = new Set(p.items.map((item) => item.path));
-    for (const item of p.previousItems) if (!incoming.has(item.path)) rmSync(item.path, { recursive: true, force: true });
-  }
-  for (const item of p.items) {
-    if (pathExists(item.path)) rmSync(item.path, { recursive: true, force: true });
-    if (p.mode === "link") symlinkSync(join(ROOT, p.pack.agentsDir, item.persona.file), item.path); else writeFileSync(item.path, item.content);
-    wrote.push(item.file);
-  }
-  const manifest = writeManifest(p, files, discovery, references);
-  return { ...p, wrote, enabledTotal: Object.keys(files).length, manifest, skill: d.skill, composition: d.composition };
+  const transactionPaths = [
+    join(p.dir, MANIFEST),
+    ...p.items.map((item) => item.path),
+    ...p.previousItems.map((item) => item.path),
+    ...desired.map(([, item]) => item.path),
+    ...(legacyCleanup?.action === "remove-block" ? [legacyCleanup.path] : []),
+  ];
+  const committed = transactionalMutation(transactionPaths, () => {
+    const discovery = { ...(p.manifest?.discovery ?? {}) };
+    const references = { ...(p.manifest?.references ?? {}) };
+    if (legacyCleanup) {
+      if (legacyCleanup.action === "remove-block") atomicReplace(legacyCleanup.path, legacyCleanup.content, legacyCleanup.mode);
+      delete discovery.brief;
+    }
+    for (const [key, item] of desired) {
+      atomicReplace(item.path, item.content);
+      const record = { type: "copy", hash: hashText(item.content) };
+      if (key === "skill") discovery.skill = record;
+      else references.composition = record;
+    }
+    const wrote = [];
+    if (p.switching) {
+      const incoming = new Set(p.items.map((item) => item.path));
+      for (const item of p.previousItems) if (!incoming.has(item.path)) rmSync(item.path, { recursive: true, force: true });
+    }
+    for (const item of p.items) {
+      if (pathExists(item.path)) rmSync(item.path, { recursive: true, force: true });
+      if (p.mode === "link") symlinkSync(join(ROOT, p.pack.agentsDir, item.persona.file), item.path); else writeFileSync(item.path, item.content);
+      wrote.push(item.file);
+    }
+    return { wrote, manifest: writeManifest(p, files, discovery, references) };
+  });
+  return { ...p, ...committed, enabledTotal: Object.keys(files).length, skill: d.skill, composition: d.composition };
 }
 
 export function disable(opts) {
