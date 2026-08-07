@@ -81,6 +81,10 @@ Have the PM evaluate this feature idea.
 Have a decisive, sceptic PM evaluate this feature idea for newcomers.
 ```
 
+**Example:** With the staffed skill in context an agent decided to launch the following subagent:
+
+<img width="2498" height="548" alt="image" src="https://github.com/user-attachments/assets/3fd4231a-1814-407f-9faf-11b319f89c2e" />
+
 Use `staffed compose` to browse valid terms and recipes. Safety, permissions, output contracts, model tier, and effort are controls, not modifiers, and take precedence.
 
 ## First use
