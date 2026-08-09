@@ -38,11 +38,17 @@ test("provider profiles resolve the approved four mappings", () => {
     strong: { model: "anthropic/claude-opus-5", thinking: "medium" },
     deep: { model: "anthropic/claude-opus-5", thinking: "xhigh" },
   });
+  assert.deepEqual(resolveProfile("openai-deepseek").map, {
+    fast: { model: "openai-codex/gpt-5.6-luna", thinking: "low" },
+    balanced: { model: "openai-codex/gpt-5.6-terra", thinking: "medium" },
+    strong: { model: "deepseek/deepseek-v4-flash", thinking: "high" },
+    deep: { model: "openai-codex/gpt-5.6-sol", thinking: "high" },
+  });
 });
 
 test("only canonical provider profiles and matching model namespaces are valid", () => {
   const cfg = loadConfig();
-  assert.deepEqual(Object.keys(cfg.profiles).sort(), ["anthropic", "openai"]);
+  assert.deepEqual(Object.keys(cfg.profiles).sort(), ["anthropic", "openai", "openai-deepseek"]);
   for (const removed of ["pi", "claude", "claude-code", "inherit"]) {
     assert.throws(() => resolveProfile(removed), /unknown profile/);
   }
@@ -54,6 +60,14 @@ test("only canonical provider profiles and matching model namespaces are valid",
   const mismatched = structuredClone(cfg);
   mismatched.profiles.anthropic.fast.model = "openai/claude-opus-5";
   assert.ok(validateModelConfig(mismatched).some((problem) => /anthropic.*fast.*anthropic provider/.test(problem)));
+
+  const hybridMismatch = structuredClone(cfg);
+  hybridMismatch.profiles["openai-deepseek"].strong.model = "anthropic/claude-sonnet-5";
+  assert.ok(
+    validateModelConfig(hybridMismatch).some(
+      (problem) => /openai-deepseek.*strong.*openai, openai-codex, deepseek provider set/.test(problem),
+    ),
+  );
   assert.throws(
     () => HOSTS.claude.mapTier({ model: "openai/claude-opus-5", thinking: "medium" }),
     /requires an Anthropic provider model/,
@@ -129,6 +143,13 @@ test("approved representative personas render exact provider values", () => {
     const anthropicByName = new Map(anthropic.items.map((item) => [item.persona.name, item.content]));
     assert.match(anthropicByName.get("builder"), /^model: anthropic\/claude-opus-5:medium$/m);
     assert.match(anthropicByName.get("artist"), /^model: anthropic\/claude-opus-5:xhigh$/m);
+
+    const hybrid = plan({ host: "pi", scope: "project", profile: "openai-deepseek", cwd });
+    const hybridByName = new Map(hybrid.items.map((item) => [item.persona.name, item.content]));
+    assert.match(hybridByName.get("researcher"), /^model: openai-codex\/gpt-5\.6-terra:medium$/m);
+    assert.match(hybridByName.get("architect"), /^model: deepseek\/deepseek-v4-flash:high$/m);
+    assert.match(hybridByName.get("builder"), /^model: deepseek\/deepseek-v4-flash:high$/m);
+    assert.match(hybridByName.get("artist"), /^model: openai-codex\/gpt-5\.6-sol:high$/m);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

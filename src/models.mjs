@@ -72,12 +72,24 @@ export function resolveProfile(name, cfg) {
   };
 }
 
-const PROFILE_KEYS = ["anthropic", "openai"];
+const PROFILE_PROVIDERS = {
+  anthropic: ["anthropic"],
+  openai: ["openai", "openai-codex"],
+  "openai-deepseek": ["openai", "openai-codex", "deepseek"],
+};
+const PROFILE_KEYS = Object.keys(PROFILE_PROVIDERS);
+
+function modelProvider(model) {
+  return model.match(/^([^/]+)\//)?.[1];
+}
 
 function matchesProfileProvider(profile, model) {
-  if (profile === "anthropic") return /^anthropic\/claude-/.test(model);
-  if (profile === "openai") return /^(?:openai|openai-codex)\//.test(model);
-  return false;
+  const provider = modelProvider(model);
+  return provider != null && PROFILE_PROVIDERS[profile]?.includes(provider);
+}
+
+function profileProviderLabel(profile) {
+  return PROFILE_PROVIDERS[profile]?.join(", ") ?? profile;
 }
 
 /** Validate models.json structure without reading or writing disk. */
@@ -92,7 +104,9 @@ export function validateModelConfig(cfg) {
     if (!Object.hasOwn(profiles, key)) problems.push(`models.json: missing canonical profile "${key}"`);
   }
   for (const key of keys) {
-    if (!PROFILE_KEYS.includes(key)) problems.push(`models.json: unsupported profile "${key}"; use anthropic or openai`);
+    if (!PROFILE_KEYS.includes(key)) {
+      problems.push(`models.json: unsupported profile "${key}"; use ${PROFILE_KEYS.join(", ")}`);
+    }
   }
   if (typeof cfg.profile !== "string" || !profiles[cfg.profile]) {
     problems.push(`models.json: default profile "${cfg.profile ?? ""}" does not exist`);
@@ -110,7 +124,9 @@ export function validateModelConfig(cfg) {
       try {
         const normalized = normalizeTier(raw[tier]);
         if (!matchesProfileProvider(key, normalized.model)) {
-          problems.push(`models.json: profile "${key}" tier "${tier}" must use a model from the ${key} provider`);
+          problems.push(
+            `models.json: profile "${key}" tier "${tier}" must use a model from the ${profileProviderLabel(key)} provider set`,
+          );
         }
       } catch (error) {
         problems.push(`models.json: profile "${key}" tier "${tier}": ${error.message}`);
@@ -121,7 +137,9 @@ export function validateModelConfig(cfg) {
         const normalized = normalizeTier(raw.strong);
         if (!normalized) throw new Error("tier config must not be null");
         if (!matchesProfileProvider(key, normalized.model)) {
-          problems.push(`models.json: profile "${key}" tier "strong" must use a model from the ${key} provider`);
+          problems.push(
+            `models.json: profile "${key}" tier "strong" must use a model from the ${profileProviderLabel(key)} provider set`,
+          );
         }
       } catch (error) {
         problems.push(`models.json: profile "${key}" tier "strong": ${error.message}`);
@@ -145,7 +163,7 @@ export function setTier(profileKey, tier, { model, thinking }) {
   };
   if (!next.model) throw new Error(`tier "${tier}" has no model yet — pass --model`);
   if (!matchesProfileProvider(key, next.model)) {
-    throw new Error(`profile "${key}" requires a model from the ${key} provider`);
+    throw new Error(`profile "${key}" requires a model from the ${profileProviderLabel(key)} provider set`);
   }
 
   cfg.profiles[key][tier] = next.thinking ? next : { model: next.model };

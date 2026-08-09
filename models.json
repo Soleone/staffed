@@ -10,11 +10,11 @@
     "",
     "Inspect with: staffed tier",
     "Edit via: staffed tier strong --model X --thinking high",
-    "Select defaults with: staffed tier --profile openai (or anthropic)",
+    "Select defaults with: staffed tier --profile openai (or anthropic or openai-deepseek)",
     "'unverified' lists tiers seeded by guesswork; declaring one clears its entry.",
     "Check your own install with: staffed doctor"
   ],
-  "profile": "openai",
+  "profile": "openai-deepseek",
   "profiles": {
     "anthropic": {
       "deep": {
@@ -46,6 +46,24 @@
       "strong": {
         "model": "openai-codex/gpt-5.6-sol",
         "thinking": "medium"
+      },
+      "deep": {
+        "model": "openai-codex/gpt-5.6-sol",
+        "thinking": "high"
+      }
+    },
+    "openai-deepseek": {
+      "fast": {
+        "model": "openai-codex/gpt-5.6-luna",
+        "thinking": "low"
+      },
+      "balanced": {
+        "model": "openai-codex/gpt-5.6-terra",
+        "thinking": "medium"
+      },
+      "strong": {
+        "model": "deepseek/deepseek-v4-flash",
+        "thinking": "high"
       },
       "deep": {
         "model": "openai-codex/gpt-5.6-sol",

@@ -20,6 +20,7 @@ roster
   staffed enable                 enable every persona; inherit the parent model
   staffed enable --profile openai  enable with cost/time-oriented OpenAI defaults
   staffed enable --profile anthropic  enable with Anthropic provider defaults
+  staffed enable --profile openai-deepseek  enable Pi's OpenAI + DeepSeek hybrid
   staffed enable pm architect    enable only these (additive)
   staffed disable                disable every persona we enabled
   staffed disable pm             disable only these
@@ -42,7 +43,7 @@ discovery (agents are invisible to an agent session; something must point at the
 tiers
   staffed tier                                 show four tier -> model/thinking rows
   staffed tier strong --model X --thinking Y   declare what the strong tier means
-  staffed tier --profile openai|anthropic      switch the default profile
+  staffed tier --profile openai|anthropic|openai-deepseek  switch the default profile
   staffed doctor                             check models against this install
 
 options

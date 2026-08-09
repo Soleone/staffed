@@ -106,6 +106,10 @@ test("Codex profile and collision rules fail closed", () => {
       /not valid for OpenAI Codex/,
     );
     assert.throws(
+      () => enable({ host: "codex", scope: "project", cwd, only: ["builder"], profile: "openai-deepseek" }),
+      /not valid for OpenAI Codex/,
+    );
+    assert.throws(
       () => enable({ host: "codex", scope: "project", cwd, only: ["builder"], mode: "link" }),
       /host-specific agent format/,
     );

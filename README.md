@@ -21,8 +21,8 @@ staffed enable
 staffed status
 ```
 
-For a quick start with pinned model tiers, the two most popular profiles are
-`openai` and `anthropic`:
+For a quick start with pinned model tiers, choose a provider profile or the
+Pi-only `openai-deepseek` hybrid:
 
 ```bash
 # Pi with OpenAI models
@@ -30,6 +30,9 @@ staffed enable --profile openai
 
 # Pi with Anthropic models
 staffed enable --profile anthropic
+
+# Pi with Luna/Terra for routine work, DeepSeek Flash for strong work, and Sol for deep work
+staffed enable --profile openai-deepseek
 
 # OpenAI Codex CLI or desktop app
 staffed enable --agent codex --profile openai
@@ -145,6 +148,6 @@ Most roles write to `artifacts/<role>/index.md`. `builder` changes the code; `re
 
 The built-in Product pack is the default. The experimental Detective preview is available through `staffed pack use detective`; see [Detective preview](docs/detective-pack.md).
 
-Roles have a default tier (`fast`, `balanced`, `strong`, or `deep`) and effort level. Plain `enable` inherits the parent session model. The only model profiles are `openai` and `anthropic`. Pi renders their provider-qualified model IDs and thinking levels; Claude Code accepts the `anthropic` profile and renders its models as `haiku`, `sonnet`, and `opus` aliases without per-agent thinking. Use `staffed tier`, `staffed doctor`, and `staffed status` to inspect mappings. Durable tier changes require a clone or persistent install, not a temporary `pnpm dlx` cache.
+Roles have a default tier (`fast`, `balanced`, `strong`, or `deep`) and effort level. Plain `enable` inherits the parent session model. Model profiles are `openai`, `anthropic`, and the Pi-only `openai-deepseek` hybrid. The hybrid maps fast to Luna low, balanced to Terra medium, strong to DeepSeek V4 Flash high, and deep to Sol high. Pi renders provider-qualified model IDs and thinking levels; Claude Code accepts the `anthropic` profile and renders its models as `haiku`, `sonnet`, and `opus` aliases without per-agent thinking. Use `staffed tier`, `staffed doctor`, and `staffed status` to inspect mappings. Durable tier changes require a clone or persistent install, not a temporary `pnpm dlx` cache.
 
 For modifier definitions and recipes, see [Composition](docs/composition.md). For Claude Code and Desktop surface details, see the [compatibility guide](docs/claude-code-compatibility.md).
