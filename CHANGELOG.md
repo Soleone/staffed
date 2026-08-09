@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/Soleone/staffed/compare/v1.7.0...v1.8.0) (2026-08-09)
+
+
+### Features
+
+* openai-deepseek hybrid model profile ([5d0ce50](https://github.com/Soleone/staffed/commit/5d0ce50cbea8815561b33533289f3479f95536a0))
+
 ## [1.7.0](https://github.com/Soleone/staffed/compare/v1.6.0...v1.7.0) (2026-08-05)
 
 
