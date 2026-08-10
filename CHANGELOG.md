@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.0](https://github.com/Soleone/staffed/compare/v1.8.0...v1.9.0) (2026-08-10)
+
+
+### Features
+
+* expose tier to model mapping for any subagent dispatch ([2c38844](https://github.com/Soleone/staffed/commit/2c38844c4d4b653bdc828bc01f96d0cfc97874ea))
+* **skill:** prioritize staffed delegation over other rosters ([5f765fc](https://github.com/Soleone/staffed/commit/5f765fcef65c0a8b8511c163a06d982838c4bdb4))
+
 ## [1.8.0](https://github.com/Soleone/staffed/compare/v1.7.0...v1.8.0) (2026-08-09)
 
 
