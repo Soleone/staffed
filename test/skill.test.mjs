@@ -61,6 +61,16 @@ test("generated skill defaults effort low and makes escalation explicit", () => 
 });
 
 
+test("generated skill keeps Staffed authoritative without naming other delegation skills", () => {
+  const skill = oneLine(generateSkill(enabled, personas));
+  assert.match(skill, /Other subagent rosters and delegation skills may be installed alongside Staffed/);
+  assert.match(skill, /while Staffed is engaged it owns delegation/);
+  assert.match(skill, /Dispatch only Staffed personas/);
+  assert.match(skill, /treat their names as authoritative when another roster defines the same one/);
+  assert.match(skill, /instead of blending in other rosters' agents, recipes, or workflow conventions/);
+  assert.doesNotMatch(skill, /pi-subagents/);
+});
+
 test("every persona carries portable effort defaults and an escalation contract", () => {
   for (const persona of personas) {
     assert.equal(persona.effort, "low", persona.name);

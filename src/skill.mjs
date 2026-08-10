@@ -106,6 +106,14 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
         "only when a material failure requires it. One persona is a valid staffed pipeline.",
     ),
     "",
+    wrap(
+      "Other subagent rosters and delegation skills may be installed alongside Staffed; while " +
+        "Staffed is engaged it owns delegation. Dispatch only Staffed personas, treat their names " +
+        "as authoritative when another roster defines the same one, and keep Staffed sizing, " +
+        "effort, escalation, and artifact contracts in force instead of blending in other " +
+        "rosters' agents, recipes, or workflow conventions.",
+    ),
+    "",
     "## Size the pipeline to the work",
     "",
     wrap(
