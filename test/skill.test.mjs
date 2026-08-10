@@ -60,6 +60,22 @@ test("generated skill defaults effort low and makes escalation explicit", () => 
   assert.match(skill, /\| `architect` \| strong \| low \|/);
 });
 
+test("generated skill exposes model tiers as a persona-free mapping", () => {
+  const skill = oneLine(generateSkill(enabled, personas));
+  assert.match(skill, /## Model tiers/);
+  assert.match(skill, /run `staffed tier --compact` to load this machine's four rows into context/);
+  assert.match(skill, /spell it `model:thinking` when thinking is set/);
+  assert.match(skill, /Never guess a model from the roster table above/);
+  assert.match(skill, /Tier dispatch is model selection, not roster engagement/);
+});
+
+test("generated skill engages on named-tier subagent launches without roster work", () => {
+  const skill = oneLine(generateSkill(enabled, personas));
+  assert.match(skill, /launch a subagent at a named tier \(fast, balanced, strong, or deep\)/);
+  assert.match(skill, /model selection, not roster work/);
+  assert.match(skill, /a request combining one of these exact enabled Staffed roles/);
+});
+
 
 test("generated skill keeps Staffed authoritative without naming other delegation skills", () => {
   const skill = oneLine(generateSkill(enabled, personas));

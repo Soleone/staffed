@@ -42,6 +42,7 @@ discovery (agents are invisible to an agent session; something must point at the
 
 tiers
   staffed tier                                 show four tier -> model/thinking rows
+  staffed tier --compact                       print only the tier -> model:thinking rows
   staffed tier strong --model X --thinking Y   declare what the strong tier means
   staffed tier --profile openai|anthropic|openai-deepseek  switch the default profile
   staffed doctor                             check models against this install
@@ -99,6 +100,7 @@ function parse(argv) {
     else if (a === "--pack") opts.pack = value("--pack");
     else if (a === "--profile") opts.profile = value("--profile");
     else if (a === "--model") opts.model = value("--model");
+    else if (a === "--compact") opts.compact = true;
     else if (a === "--thinking") opts.thinking = value("--thinking");
     else if (a === "--no-skill") opts.skill = false;
     else if (a === "--link") opts.mode = "link";
@@ -176,6 +178,15 @@ export function printTiers(profileArg, cfg = loadConfig()) {
         "`staffed tier strong --model <m> --thinking <t>`.",
     );
   }
+}
+
+/** The tier -> model:thinking map alone, for dropping into an agent's context. */
+export function printTiersCompact(profileArg, cfg = loadConfig()) {
+  const { key, map } = resolveProfile(profileArg ?? true, cfg);
+  const rows = Object.entries(map).map(([tier, t]) => [tier, formatTier(t)]);
+  const w = pad(rows, 0);
+  console.log(`profile ${key}`);
+  for (const [t, m] of rows) console.log(`  ${t.padEnd(w)}  ${m}`);
 }
 
 /** Compare configured models against what this pi install actually offers. */
@@ -430,6 +441,12 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   if (cmd === "tier" || cmd === "models") {
+    if (opts.compact) {
+      if (names.length) throw new Error("--compact takes no tier name");
+      if (opts.model !== undefined || opts.thinking !== undefined) throw new Error("--compact only prints; it cannot set a tier");
+      printTiersCompact(argv.includes("--profile") ? opts.profile : undefined);
+      return 0;
+    }
     // `tier --profile X` with no tier name switches the default profile.
     if (!names.length && opts.model === undefined && opts.thinking === undefined) {
       if (opts.profile !== "none" && argv.includes("--profile")) {

@@ -67,13 +67,31 @@ test("agent-independent commands do not detect an ambiguous home", () => {
   try {
     mkdirSync(join(home, ".pi", "agent"), { recursive: true });
     mkdirSync(join(home, ".claude"));
-    for (const args of [["help"], ["list"], ["compose"], ["pack", "list"], ["tier"], ["models"], ["validate"], ["list", "--agent", "claude"]]) {
+    for (const args of [["help"], ["list"], ["compose"], ["pack", "list"], ["tier"], ["tier", "--compact"], ["models"], ["validate"], ["list", "--agent", "claude"]]) {
       const result = runResult(args, { env: { HOME: home } });
       assert.equal(result.status, 0, `${args[0]} failed: ${result.stderr}`);
       assert.doesNotMatch(result.stderr, /both Pi and Claude Code/);
     }
   } finally {
     rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("staffed tier --compact prints only the tier -> model:thinking rows", () => {
+  const output = run(["tier", "--compact"]);
+  const rows = output.trim().split("\n");
+  assert.match(rows[0], /^profile \S+$/);
+  assert.equal(rows.length, 1 + 4);
+  for (const row of rows.slice(1)) assert.match(row, /^  (fast|balanced|strong|deep)\s+\S+$/);
+  assert.doesNotMatch(output, /persona/);
+  assert.doesNotMatch(output, /unverified/);
+  assert.doesNotMatch(output, /profiles:/);
+});
+
+test("staffed tier --compact rejects set flags and tier names", () => {
+  for (const args of [["tier", "--compact", "deep"], ["tier", "--compact", "--model", "x"], ["tier", "--compact", "--thinking", "high"]]) {
+    const result = runResult(args);
+    assert.equal(result.status, 1, args.join(" "));
   }
 });
 

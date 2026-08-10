@@ -8,7 +8,7 @@ import { EFFORTS, TIERS, loadPersonas } from "../src/personas.mjs";
 import { loadConfig, resolveProfile, setProfile, setTier, validateModelConfig } from "../src/models.mjs";
 import { plan } from "../src/install.mjs";
 import { HOSTS } from "../src/hosts.mjs";
-import { printTiers } from "../src/cli.mjs";
+import { printTiers, printTiersCompact } from "../src/cli.mjs";
 
 test("canonical tiers and persona assignments are exact", () => {
   assert.deepEqual(TIERS, ["fast", "balanced", "strong", "deep"]);
@@ -167,6 +167,18 @@ function printedTiers(profile, cfg) {
   return lines.join("\n");
 }
 
+function printedTiersCompact(profile, cfg) {
+  const lines = [];
+  const original = console.log;
+  console.log = (...args) => lines.push(args.join(" "));
+  try {
+    printTiersCompact(profile, cfg);
+  } finally {
+    console.log = original;
+  }
+  return lines.join("\n");
+}
+
 test("tier printer shows four OpenAI rows without changing the default", () => {
   const before = loadConfig().profile;
   const output = printedTiers("openai");
@@ -203,4 +215,28 @@ test("an explicit strong declaration removes fallback annotation and hint", () =
   assert.match(output, /^  strong\s+declared-strong\s+high$/m);
   assert.doesNotMatch(output, /compatibility fallback/);
   assert.doesNotMatch(output, /has no explicit strong tier/);
+});
+
+test("compact tier printer emits only the four model:thinking rows and the profile", () => {
+  const output = printedTiersCompact("openai");
+  assert.match(output, /^profile openai$/m);
+  for (const tier of TIERS) assert.match(output, new RegExp(`^  ${tier}\\s`, "m"));
+  for (const tier of TIERS) assert.match(output, new RegExp(`^  ${tier}\\s+\\S+`, "m"));
+  assert.doesNotMatch(output, /profiles:/);
+  assert.doesNotMatch(output, /persona\s+tier/);
+  assert.doesNotMatch(output, /unverified/);
+  assert.doesNotMatch(output, /compatibility/);
+});
+
+test("compact tier printer resolves legacy strong fallback to the balanced model", () => {
+  const cfg = {
+    profile: "legacy",
+    profiles: {
+      legacy: { fast: "fast", balanced: "balanced:medium", deep: "deep:high" },
+    },
+  };
+  const output = printedTiersCompact("legacy", cfg);
+  assert.match(output, /^  strong\s+balanced:medium$/m);
+  assert.doesNotMatch(output, /fallback/);
+  assert.doesNotMatch(output, /declare it with/);
 });

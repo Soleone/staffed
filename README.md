@@ -119,10 +119,11 @@ Each role writes its primary result to `artifacts/<role>/index.md`; the artifact
 | `staffed pack list` | list available packs |
 | `staffed pack use <name>` | switch the active pack for this scope |
 | `staffed tier [name]` | show or set tier model/thinking mappings |
+| `staffed tier --compact` | print just the tier → model:thinking rows for an agent's context |
 | `staffed doctor` | check model IDs against this Pi installation |
 | `staffed validate` | validate the roster |
 
-Useful options: `--agent pi|codex|claude|opencode`, `--scope user|project`, `--pack`, `--profile`, `--model`, `--thinking`, `--link`, `--force`, `--dry-run`, and `--no-skill`.
+Useful options: `--agent pi|codex|claude|opencode`, `--scope user|project`, `--pack`, `--profile`, `--model`, `--thinking`, `--compact`, `--link`, `--force`, `--dry-run`, and `--no-skill`.
 
 `--agent` selects where files are rendered; `--profile` selects render-time model defaults. They are independent. Without `--agent`, Staffed selects the one detected host; if multiple supported hosts are present, choose explicitly. Pi, OpenAI Codex, and Claude Code are supported. Codex uses `.codex/agents/*.toml` for custom agents and `.agents/skills/staffed/` for the shared CLI/desktop skill. The Claude integration works in both the CLI and Claude Desktop's Code tab because those surfaces share `.claude` configuration. Claude Desktop Chat and Cowork are separate surfaces and are not supported by that integration. opencode remains gated, so requests for it fail rather than write unverified files.
 
@@ -148,6 +149,6 @@ Most roles write to `artifacts/<role>/index.md`. `builder` changes the code; `re
 
 The built-in Product pack is the default. The experimental Detective preview is available through `staffed pack use detective`; see [Detective preview](docs/detective-pack.md).
 
-Roles have a default tier (`fast`, `balanced`, `strong`, or `deep`) and effort level. Plain `enable` inherits the parent session model. Model profiles are `openai`, `anthropic`, and the Pi-only `openai-deepseek` hybrid. The hybrid maps fast to Luna low, balanced to Terra medium, strong to DeepSeek V4 Flash high, and deep to Sol high. Pi renders provider-qualified model IDs and thinking levels; Claude Code accepts the `anthropic` profile and renders its models as `haiku`, `sonnet`, and `opus` aliases without per-agent thinking. Use `staffed tier`, `staffed doctor`, and `staffed status` to inspect mappings. Durable tier changes require a clone or persistent install, not a temporary `pnpm dlx` cache.
+Roles have a default tier (`fast`, `balanced`, `strong`, or `deep`) and effort level. Plain `enable` inherits the parent session model. Model profiles are `openai`, `anthropic`, and the Pi-only `openai-deepseek` hybrid. The hybrid maps fast to Luna low, balanced to Terra medium, strong to DeepSeek V4 Flash high, and deep to Sol high. Pi renders provider-qualified model IDs and thinking levels; Claude Code accepts the `anthropic` profile and renders its models as `haiku`, `sonnet`, and `opus` aliases without per-agent thinking. Use `staffed tier`, `staffed doctor`, and `staffed status` to inspect mappings. `staffed tier --compact` prints just the four tier → model:thinking rows, so any agent can pin a subagent's model and thinking level on demand (for example, "launch a deep tier subagent") without reading a persona file; the generated skill points orchestrators at it. Durable tier changes require a clone or persistent install, not a temporary `pnpm dlx` cache.
 
 For modifier definitions and recipes, see [Composition](docs/composition.md). For Claude Code and Desktop surface details, see the [compatibility guide](docs/claude-code-compatibility.md).

@@ -88,7 +88,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     ...wrap(
       `Staff a project with ${pack.label}${pack.experimental ? " (experimental preview)" : ""}, a coordinated ${workerLabel} roster for ${pack.description.toLowerCase()} Use ` +
         `ONLY when explicitly engaged: "staff this project", "use Staffed", ${invocation}, ` +
-        `or a request combining one of these exact enabled Staffed roles with behavioral modifiers or aliases: ${enabledRoleNames.join(", ")}. ` +
+        `or a request combining one of these exact enabled Staffed roles with behavioral modifiers or aliases: ${enabledRoleNames.join(", ")}, or a request to launch a subagent at a named tier (fast, balanced, strong, or deep) — model selection, not roster work. ` +
         `Examples: ${activationExamples}. ` +
         `${codexOrClaude ? "Do NOT use for ordinary prompts, including edits, bug fixes, refactors, reviews or questions" : "Do NOT use for ordinary edits, bug fixes, refactors, reviews or questions"} — those are ` +
         "faster done directly.",
@@ -205,6 +205,20 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
       "Route by each persona's `description`, which states what it owns and what it must refuse. " +
         "One persona, one job. Full order when you do run end to end: " +
         `${chain(stages)}.`,
+    ),
+    "",
+    "## Model tiers",
+    "",
+    wrap(
+      "A persona's tier names a row in `models.json`, which maps `fast`, `balanced`, `strong`, and `deep` to concrete " +
+        "model + thinking values: the part of Staffed that works without any persona. When the user names a tier " +
+        "(\"launch a deep tier subagent\") or an escalation approves a higher tier, run `staffed tier --compact` to " +
+        "load this machine's four rows into context, then pass the row's model when dispatching. On pi, spell it " +
+        "`model:thinking` when thinking is set; hosts without per-agent thinking take the model alone. Never guess a " +
+        "model from the roster table above, which carries only tier names, and do not read a persona file for the " +
+        "mapping: `staffed tier --compact` is the lightweight source, fresh from this machine's `models.json` and " +
+        "reflecting profile switches and local edits. Tier dispatch is model selection, not roster engagement: no " +
+        "persona runs unless the user asked for staffed work.",
     ),
   ];
 
