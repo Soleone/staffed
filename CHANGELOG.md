@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/Soleone/staffed/compare/v1.9.0...v1.10.0) (2026-08-18)
+
+
+### Features
+
+* **skill:** support concrete model dispatch requests ([fbc9fa8](https://github.com/Soleone/staffed/commit/fbc9fa813db1cc841a2d703cba2c6641259514fe))
+
 ## [1.9.0](https://github.com/Soleone/staffed/compare/v1.8.0...v1.9.0) (2026-08-10)
 
 
