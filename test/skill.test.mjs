@@ -66,14 +66,22 @@ test("generated skill exposes model tiers as a persona-free mapping", () => {
   assert.match(skill, /run `staffed tier --compact` to load this machine's four rows into context/);
   assert.match(skill, /spell it `model:thinking` when thinking is set/);
   assert.match(skill, /Never guess a model from the roster table above/);
-  assert.match(skill, /Tier dispatch is model selection, not roster engagement/);
+  assert.match(skill, /Tier or model dispatch is model selection, not roster engagement/);
 });
 
-test("generated skill engages on named-tier subagent launches without roster work", () => {
+test("generated skill engages on named-tier or concrete-model launches without roster work", () => {
   const skill = oneLine(generateSkill(enabled, personas));
-  assert.match(skill, /launch a subagent at a named tier \(fast, balanced, strong, or deep\)/);
+  assert.match(skill, /launch a subagent at a named tier \(fast, balanced, strong, or deep\) or with a concrete model/);
   assert.match(skill, /model selection, not roster work/);
   assert.match(skill, /a request combining one of these exact enabled Staffed roles/);
+  assert.match(skill, /explicit concrete-model request is also a control, not a modifier/);
+  assert.match(skill, /preserve the user's exact model string and pass it as the dispatch `model`/);
+  assert.match(skill, /explicit model overrides that role's default tier/);
+  assert.match(skill, /when the host is Pi, first try `pi --list-models <search>`/);
+  assert.match(skill, /This lists Pi's available catalog, not necessarily the current interactive session's `\/scoped-models` set/);
+  assert.match(skill, /If the command is unavailable, fails, returns no candidates, or the match is ambiguous/);
+  assert.match(skill, /Non-Pi hosts skip the command entirely/);
+  assert.match(skill, /do not invent an ID or block the staffed dispatch/);
 });
 
 

@@ -88,7 +88,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     ...wrap(
       `Staff a project with ${pack.label}${pack.experimental ? " (experimental preview)" : ""}, a coordinated ${workerLabel} roster for ${pack.description.toLowerCase()} Use ` +
         `ONLY when explicitly engaged: "staff this project", "use Staffed", ${invocation}, ` +
-        `or a request combining one of these exact enabled Staffed roles with behavioral modifiers or aliases: ${enabledRoleNames.join(", ")}, or a request to launch a subagent at a named tier (fast, balanced, strong, or deep) — model selection, not roster work. ` +
+        `or a request combining one of these exact enabled Staffed roles with behavioral modifiers or aliases: ${enabledRoleNames.join(", ")}, or a request to launch a subagent at a named tier (fast, balanced, strong, or deep) or with a concrete model — model selection, not roster work. ` +
         `Examples: ${activationExamples}. ` +
         `${codexOrClaude ? "Do NOT use for ordinary prompts, including edits, bug fixes, refactors, reviews or questions" : "Do NOT use for ordinary edits, bug fixes, refactors, reviews or questions"} — those are ` +
         "faster done directly.",
@@ -217,8 +217,17 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
         "`model:thinking` when thinking is set; hosts without per-agent thinking take the model alone. Never guess a " +
         "model from the roster table above, which carries only tier names, and do not read a persona file for the " +
         "mapping: `staffed tier --compact` is the lightweight source, fresh from this machine's `models.json` and " +
-        "reflecting profile switches and local edits. Tier dispatch is model selection, not roster engagement: no " +
-        "persona runs unless the user asked for staffed work.",
+        "reflecting profile switches and local edits. An explicit concrete-model request is also a control, not a " +
+        "modifier: preserve the user's exact model string and pass it as the dispatch `model`, with any requested " +
+        "Pi thinking suffix, instead of resolving or replacing it with a tier. If both a role and model are named, " +
+        "the explicit model overrides that role's default tier for that dispatch. For a casual model request such as " +
+        "`Opus`, `latest Sonnet`, or `Sol`, and only when the host is Pi, first try `pi --list-models <search>` " +
+        "with the user's distinctive model terms; use the provider and model columns as candidates and choose an " +
+        "exact, clearly matching ID. This lists Pi's available catalog, not necessarily the current interactive " +
+        "session's `/scoped-models` set. If the command is unavailable, fails, returns no candidates, or the match " +
+        "is ambiguous, continue by interpreting the request from context; do not invent an ID or block the staffed " +
+        "dispatch. Non-Pi hosts skip the command entirely. Tier or model dispatch is model selection, not roster " +
+        "engagement: no persona runs unless the user asked for staffed work.",
     ),
   ];
 
