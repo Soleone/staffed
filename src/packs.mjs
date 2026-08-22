@@ -8,6 +8,9 @@ import { ROOT, loadPersonas } from "./personas.mjs";
 export const DEFAULT_PACK = "product";
 export const CATALOG_FILE = join(ROOT, "catalog.json");
 
+/** The label suffix used wherever a pack name is printed. */
+export const packSuffix = (pack) => (pack.experimental ? " (experimental preview)" : "");
+
 let cached;
 export function loadCatalog(file = CATALOG_FILE) {
   if (file === CATALOG_FILE && cached) return cached;

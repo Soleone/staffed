@@ -56,9 +56,6 @@ function discoveryRecords(value) {
   if (!object(value)) throw new Error("manifest discovery must be an object");
   for (const [name, record] of Object.entries(value)) {
     if (name === "skill") validateRecord(record, ["copy"], "manifest discovery.skill");
-    // One-release input-only exception: install lifecycle removes this tracked legacy block.
-    // Remove this branch with legacy-brief-cleanup.mjs in the following release.
-    else if (name === "brief") validateRecord(record, ["block"], "manifest discovery.brief");
     else throw new Error(`manifest discovery.${name} is not supported`);
   }
   return value;

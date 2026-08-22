@@ -1,7 +1,10 @@
 // Argument parsing and output. All behaviour lives in the sibling modules.
 
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { validate } from "./personas.mjs";
-import { DEFAULT_PACK, compositionSentence, dimensionsFor, loadCatalog, packNames, parseComposition, resolvePack, validateCatalog, vocabularyIndex } from "./packs.mjs";
+import { DEFAULT_PACK, compositionSentence, dimensionsFor, loadCatalog, packNames, packSuffix, parseComposition, resolvePack, validateCatalog, vocabularyIndex } from "./packs.mjs";
 import {
   formatTier,
   loadConfig,
@@ -10,7 +13,8 @@ import {
   setTier,
   validateModelConfig,
 } from "./models.mjs";
-import { HOSTS, resolveHost, selectDefaultAgent } from "./hosts.mjs";
+import { HOSTS, assertKnownHost, resolveHost, selectDefaultAgent } from "./hosts.mjs";
+import { table, wrap } from "./text.mjs";
 import * as placement from "./install.mjs";
 import { generateSkill } from "./skill.mjs";
 
@@ -98,7 +102,7 @@ function parse(argv) {
     if (a === "--agent") opts.agent = value("--agent");
     else if (a === "--scope") opts.scope = value("--scope");
     else if (a === "--pack") opts.pack = value("--pack");
-    else if (a === "--profile") opts.profile = value("--profile");
+    else if (a === "--profile") { opts.profile = value("--profile"); opts.profileGiven = true; }
     else if (a === "--model") opts.model = value("--model");
     else if (a === "--compact") opts.compact = true;
     else if (a === "--thinking") opts.thinking = value("--thinking");
@@ -115,31 +119,17 @@ function parse(argv) {
   return { opts, rest };
 }
 
-const pad = (rows, i) => Math.max(...rows.map((r) => String(r[i]).length));
-
 /** Wrap to ~86 columns with a hanging indent. */
-function wrap(text, indent) {
-  const out = [];
-  let line = "";
-  for (const word of text.split(/\s+/)) {
-    if (line && `${indent}${line} ${word}`.length > 86) {
-      out.push(indent + line);
-      line = word;
-    } else line = line ? `${line} ${word}` : word;
-  }
-  if (line) out.push(indent + line);
-  return out.join("\n");
-}
+const hang = (text, indent = "") => wrap(text, 86, indent);
 
 function warnUnverified(profile) {
   if (!profile?.unverified?.length) return;
   console.log();
   console.log(
-    wrap(
+    hang(
       `warning: tier(s) ${profile.unverified.join(", ")} in profile "${profile.key}" were seeded by ` +
         "guesswork and are not confirmed against a real install. Run `staffed doctor`, then " +
         "declare them with `staffed tier <tier> --model <m> --thinking <t>`.",
-      "",
     ),
   );
 }
@@ -158,19 +148,12 @@ export function printTiers(profileArg, cfg = loadConfig()) {
       .filter(Boolean)
       .join("; "),
   ]);
-  const w = [pad(rows, 0), pad(rows, 1), pad(rows, 2)];
-  console.log(`  ${"tier".padEnd(w[0])}  ${"model".padEnd(w[1])}  ${"thinking".padEnd(w[2])}`);
-  for (const [t, m, th, note] of rows) {
-    console.log(`  ${t.padEnd(w[0])}  ${m.padEnd(w[1])}  ${th.padEnd(w[2])}  ${note}`.trimEnd());
-  }
+  console.log(`  ${table([["tier", "model", "thinking", ""], ...rows]).split("\n").join("\n  ")}`);
   console.log(`\nprofiles: ${Object.keys(cfg.profiles).join(", ")}`);
 
   const prows = resolvePack(DEFAULT_PACK).personas.map((p) => [p.name, p.tier, p.effort, formatTier(map[p.tier])]);
-  const pw = [pad(prows, 0), pad(prows, 1), pad(prows, 2)];
   console.log();
-  for (const [n, t, e, m] of prows) {
-    console.log(`  ${n.padEnd(pw[0])}  ${t.padEnd(pw[1])}  ${e.padEnd(pw[2])}  ${m}`);
-  }
+  console.log(table(prows).split("\n").map((line) => `  ${line}`).join("\n"));
   warnUnverified({ key, unverified });
   if (fallbacks.length) {
     console.log(
@@ -183,10 +166,9 @@ export function printTiers(profileArg, cfg = loadConfig()) {
 /** The tier -> model:thinking map alone, for dropping into an agent's context. */
 export function printTiersCompact(profileArg, cfg = loadConfig()) {
   const { key, map } = resolveProfile(profileArg ?? true, cfg);
-  const rows = Object.entries(map).map(([tier, t]) => [tier, formatTier(t)]);
-  const w = pad(rows, 0);
   console.log(`profile ${key}`);
-  for (const [t, m] of rows) console.log(`  ${t.padEnd(w)}  ${m}`);
+  console.log(table(Object.entries(map).map(([tier, t]) => [tier, formatTier(t)]))
+    .split("\n").map((line) => `  ${line}`).join("\n"));
 }
 
 /** Compare configured models against what this pi install actually offers. */
@@ -195,9 +177,6 @@ async function doctor(agentName) {
     console.error(`doctor can inspect the Pi registry only; ${resolveHost(agentName).label} model availability cannot be verified here.`);
     return 1;
   }
-  const { homedir } = await import("node:os");
-  const { join } = await import("node:path");
-  const { readFileSync } = await import("node:fs");
   const cfg = loadConfig();
   console.log(`env     PI_MODEL=${process.env.PI_MODEL ?? "—"} PI_REASONING_LEVEL=${process.env.PI_REASONING_LEVEL ?? "—"}`);
   console.log(`        PI_PROVIDER=${process.env.PI_PROVIDER ?? "—"}`);
@@ -223,11 +202,14 @@ async function doctor(agentName) {
   for (const key of Object.keys(cfg.profiles)) {
     const { map, fallbacks = [] } = resolveProfile(key, cfg);
     console.log(`\nprofile ${key}`);
-    for (const [tier, t] of Object.entries(map)) {
-      const ok = known.size === 0 ? "?" : known.has(t.model) ? "ok" : "NOT FOUND";
-      const note = fallbacks.some((f) => f.tier === tier) ? " (compatibility fallback from balanced)" : "";
-      console.log(`  ${tier.padEnd(9)} ${formatTier(t).padEnd(30)} ${ok}${note}`);
-    }
+    const rows = Object.entries(map).map(([tier, t]) => [
+      tier,
+      formatTier(t),
+      `${known.size === 0 ? "?" : known.has(t.model) ? "ok" : "NOT FOUND"}${
+        fallbacks.some((f) => f.tier === tier) ? " (compatibility fallback from balanced)" : ""
+      }`,
+    ]);
+    console.log(table(rows).split("\n").map((line) => `  ${line}`).join("\n"));
   }
   console.log(
     "\nAvailability, including non-Pi and cross-provider profiles, depends on the providers installed in this Pi environment.",
@@ -238,7 +220,7 @@ async function doctor(agentName) {
 function printStatus(s) {
   console.log(`agent   ${s.host.label} (${s.host.key})`);
   console.log(`scope   ${s.scope}`);
-  console.log(`pack    ${s.pack.key}${s.pack.experimental ? " (experimental preview)" : ""}`);
+  console.log(`pack    ${s.pack.key}${packSuffix(s.pack)}`);
   console.log(`dir     ${s.dir}`);
   console.log(
     s.manifestError
@@ -258,12 +240,7 @@ function printStatus(s) {
       modelOf(i),
     ]),
   ];
-  const w = [pad(rows, 0), pad(rows, 1), pad(rows, 2), pad(rows, 3)];
-  for (const [n, t, e, st, m] of rows) {
-    console.log(
-      `  ${n.padEnd(w[0])}  ${t.padEnd(w[1])}  ${e.padEnd(w[2])}  ${st.padEnd(w[3])}  ${m}`.trimEnd(),
-    );
-  }
+  console.log(table(rows).split("\n").map((line) => `  ${line}`).join("\n"));
   const enabled = s.items.filter((i) => i.state === "enabled").map((i) => i.persona.name);
   const drift = s.items.filter((i) => !["enabled", "disabled"].includes(i.state));
   console.log(`\n${enabled.length}/${s.items.length} enabled`);
@@ -292,16 +269,6 @@ const modelOf = (i) => {
   const value = i.tracked.thinking ? `${i.tracked.model}:${i.tracked.thinking}` : i.tracked.model;
   return `${i.tracked.tier} → ${value} (${i.tracked.profile ?? "unknown"})`;
 };
-
-const DEPENDENT_COMMANDS = new Set([
-  "doctor", "skill", "status", "enable", "install", "disable", "uninstall", "pack",
-]);
-
-function assertKnownAgent(name) {
-  if (name !== undefined && !Object.hasOwn(HOSTS, name)) {
-    throw new Error(`unknown agent "${name}". known: ${Object.keys(HOSTS).join(", ")}`);
-  }
-}
 
 function selectAgent(opts) {
   if (opts.agent !== undefined) return resolveHost(opts.agent);
@@ -337,10 +304,11 @@ function validationProblems() {
 }
 
 function printPackList() {
-  for (const name of packNames()) {
+  const rows = packNames().map((name) => {
     const pack = resolvePack(name);
-    console.log(`  ${name.padEnd(10)} ${pack.experimental ? "experimental preview" : "stable"}  ${pack.label} (${pack.personas.length} roles)`);
-  }
+    return [name, pack.experimental ? "experimental preview" : "stable", `${pack.label} (${pack.personas.length} roles)`];
+  });
+  console.log(table(rows).split("\n").map((line) => `  ${line}`).join("\n"));
   console.log("\nProduct is the built-in default. An installed scope has exactly one active pack.");
 }
 
@@ -349,7 +317,7 @@ function printCompose(args, packName) {
   const dimensions = dimensionsFor(pack.key);
   const index = vocabularyIndex(pack.key);
   if (!args.length) {
-    console.log(`Staffed composition catalog (stateless) — ${pack.label}${pack.experimental ? " (experimental preview)" : ""}`);
+    console.log(`Staffed composition catalog (stateless) — ${pack.label}${packSuffix(pack)}`);
     console.log("\n  <role> [stance] [drive] [lens] [audience] [voice]");
     console.log("\nSelect one role and only the modifiers that materially change the result.\n");
     console.log(`roles: ${pack.personas.map((p) => p.name).join(", ")}`);
@@ -367,7 +335,7 @@ function printCompose(args, packName) {
     return;
   }
   if (args.length === 1 && args[0].toLowerCase() === "recipes") {
-    console.log(`${pack.label}${pack.experimental ? " (experimental preview)" : ""} recipes\n`);
+    console.log(`${pack.label}${packSuffix(pack)} recipes\n`);
     for (const recipe of pack.recipes) console.log(`  ${recipe.name}\n    ${recipe.goal}\n    ${recipe.composition.join(" + ")}\n`);
     return;
   }
@@ -388,14 +356,14 @@ function printCompose(args, packName) {
       return;
     }
     if (entry?.dimension === "role") {
-      console.log(`${entry.name}\nrole in ${pack.label}${pack.experimental ? " (experimental preview)" : ""}\n\n${entry.summary}`);
+      console.log(`${entry.name}\nrole in ${pack.label}${packSuffix(pack)}\n\n${entry.summary}`);
       const recipes = pack.recipes.filter((recipe) => recipe.composition.includes(entry.name));
       if (recipes.length) console.log(`\nRecipes:\n${recipes.map((recipe) => `  ${recipe.composition.join(" + ")}`).join("\n")}`);
       return;
     }
   }
   const composition = parseComposition(args, pack.key);
-  console.log(`pack  ${pack.key}${pack.experimental ? " (experimental preview)" : ""}`);
+  console.log(`pack  ${pack.key}${packSuffix(pack)}`);
   for (const dimension of ["role", "stance", "drive", "lens", "audience", "voice"]) {
     const entry = composition.selected[dimension];
     if (entry) console.log(`${dimension.padEnd(8)} ${entry.name}${entry.alias ? ` (${entry.alias})` : ""}`);
@@ -403,154 +371,162 @@ function printCompose(args, packName) {
   console.log(`\n${compositionSentence(composition)}`);
 }
 
-export async function main(argv = process.argv.slice(2)) {
-  const { opts, rest } = parse(argv);
-  const cmd = rest[0] ?? "help";
-  const names = rest.slice(1);
-  assertKnownAgent(opts.agent);
+function cmdList({ opts }) {
+  const pack = resolvePack(opts.pack ?? DEFAULT_PACK);
+  const rows = pack.personas.map((p) => [
+    p.name,
+    p.tier ?? "?",
+    p.effort ?? "?",
+    `${(p.meta.description ?? "").split(". ")[0]}.`,
+  ]);
+  console.log(table(rows).split("\n").map((line) => `  ${line}`).join("\n"));
+  console.log(`\n${rows.length} personas — catalog pack ${pack.key}${packSuffix(pack)} (stateless; use status for installed state)`);
+  return 0;
+}
 
-  if (opts.help || cmd === "help") {
-    console.log(HELP);
+function cmdTier({ opts, names }) {
+  const profile = opts.profileGiven ? opts.profile : undefined;
+  if (opts.compact) {
+    if (names.length) throw new Error("--compact takes no tier name");
+    if (opts.model !== undefined || opts.thinking !== undefined) throw new Error("--compact only prints; it cannot set a tier");
+    printTiersCompact(profile);
     return 0;
   }
-
-  if (cmd === "list") {
-    const pack = resolvePack(opts.pack ?? DEFAULT_PACK);
-    const rows = pack.personas.map((p) => [
-      p.name,
-      p.tier ?? "?",
-      p.effort ?? "?",
-      p.meta.description ?? "",
-    ]);
-    const w = [pad(rows, 0), pad(rows, 1), pad(rows, 2)];
-    for (const [n, t, e, d] of rows) {
-      console.log(`  ${n.padEnd(w[0])}  ${t.padEnd(w[1])}  ${e.padEnd(w[2])}  ${d.split(". ")[0]}.`);
+  // `tier --profile X` with no tier name switches the default profile.
+  if (!names.length && opts.model === undefined && opts.thinking === undefined) {
+    if (opts.profile !== "none" && opts.profileGiven) {
+      printTiers(setProfile(opts.profile));
+      return 0;
     }
-    console.log(`\n${rows.length} personas — catalog pack ${pack.key}${pack.experimental ? " (experimental preview)" : ""} (stateless; use status for installed state)`);
+    printTiers();
     return 0;
   }
+  if (!names.length) throw new Error("which tier? e.g. `staffed tier deep --model X --thinking xhigh`");
+  const r = setTier(profile ?? null, names[0], opts);
+  console.log(`profile ${r.profile}: ${r.tier} -> ${formatTier(r.config)}\n`);
+  printTiers(r.profile);
+  return 0;
+}
 
-  if (cmd === "compose") {
-    printCompose(names, opts.pack ?? DEFAULT_PACK);
+function cmdValidate() {
+  const problems = validationProblems();
+  const count = packNames().reduce((total, name) => total + resolvePack(name).personas.length, 0);
+  console.log(`${count} personas across ${packNames().length} packs`);
+  if (!problems.length) {
+    console.log("0 problems");
     return 0;
   }
+  console.error(`\n${problems.length} problem(s):`);
+  for (const p of problems) console.error(`  - ${p}`);
+  return 1;
+}
 
-  if (cmd === "pack" && (!names.length || names[0] === "list")) {
+function cmdPack(ctx) {
+  const { opts, names } = ctx;
+  if (!names.length || names[0] === "list") {
     printPackList();
     return 0;
   }
+  const host = selectAgent(opts);
+  if (names[0] !== "use" || !names[1] || names.length > 2) throw new Error("usage: staffed pack use <name>");
+  const next = resolvePack(names[1]);
+  const problems = validationProblems();
+  if (problems.length) throw new Error(`refusing to switch — configuration has ${problems.length} problem(s)`);
+  const r = placement.enable({ ...placementOptions(opts, host), pack: next.key, only: [] });
+  console.log(`${r.dryRun ? "would use" : "active pack"} ${r.pack.key}${packSuffix(r.pack)} — ${r.dryRun ? r.items.length : r.enabledTotal} roles ${r.dryRun ? "would be enabled" : "enabled"} in ${r.dir}`);
+  return 0;
+}
 
-  if (cmd === "tier" || cmd === "models") {
-    if (opts.compact) {
-      if (names.length) throw new Error("--compact takes no tier name");
-      if (opts.model !== undefined || opts.thinking !== undefined) throw new Error("--compact only prints; it cannot set a tier");
-      printTiersCompact(argv.includes("--profile") ? opts.profile : undefined);
-      return 0;
-    }
-    // `tier --profile X` with no tier name switches the default profile.
-    if (!names.length && opts.model === undefined && opts.thinking === undefined) {
-      if (opts.profile !== "none" && argv.includes("--profile")) {
-        printTiers(setProfile(opts.profile));
-        return 0;
-      }
-      printTiers();
-      return 0;
-    }
-    if (!names.length) throw new Error("which tier? e.g. `staffed tier deep --model X --thinking xhigh`");
-    const r = setTier(argv.includes("--profile") ? opts.profile : null, names[0], opts);
-    console.log(`profile ${r.profile}: ${r.tier} -> ${formatTier(r.config)}\n`);
-    printTiers(r.profile);
-    return 0;
+/** Commands that probe the filesystem for an installed host before running. */
+const dependent = (run) => (ctx) => {
+  const host = selectAgent(ctx.opts);
+  return run({ ...ctx, host, agentOpts: placementOptions(ctx.opts, host) });
+};
+
+const cmdDoctor = dependent(({ host }) => doctor(host.key));
+
+const cmdSkill = dependent(({ opts, host, agentOpts }) => {
+  const current = placement.status(agentOpts);
+  const enabled = current.items.filter((item) => item.state === "enabled").map((item) => item.persona.name);
+  if (!enabled.length) {
+    console.error(`nothing is enabled for agent ${host.label} (${opts.scope} scope).`);
+    return 1;
   }
+  console.log(`# would go in ${host.skillDir(opts.scope, process.cwd())}/staffed/SKILL.md\n`);
+  console.log(generateSkill({ hostKey: host.key, enabled, personas: current.pack.personas, pack: current.pack.key }));
+  return 0;
+});
 
-  if (cmd === "validate") {
-    const problems = validationProblems();
-    const count = packNames().reduce((total, name) => total + resolvePack(name).personas.length, 0);
-    console.log(`${count} personas across ${packNames().length} packs`);
-    if (!problems.length) {
-      console.log("0 problems");
-      return 0;
-    }
-    console.error(`\n${problems.length} problem(s):`);
+const cmdStatus = dependent(({ agentOpts }) => {
+  printStatus(placement.status(agentOpts));
+  return 0;
+});
+
+const cmdEnable = dependent(({ opts, names, agentOpts }) => {
+  const problems = validationProblems();
+  if (problems.length) {
+    console.error(`refusing to enable — configuration has ${problems.length} problem(s):`);
     for (const p of problems) console.error(`  - ${p}`);
     return 1;
   }
+  const r = placement.enable({ ...agentOpts, only: names });
+  const verb = r.dryRun ? "would enable" : r.mode === "link" ? "linked" : "enabled";
+  console.log(`${verb} ${r.items.length}${names.length ? "" : " (all)"} -> ${r.dir}`);
+  console.log(
+    `agent ${r.host.label}, scope ${r.scope}, pack ${r.pack.key}${packSuffix(r.pack)}, profile ${r.profile.key}, mode ${r.mode}` +
+      (r.enabledTotal ? `, ${r.enabledTotal} enabled in total` : ""),
+  );
+  if (r.dryRun) for (const i of r.items) console.log(`  ${i.file}  (${LABEL[i.state] ?? i.state})`);
 
-  if (!DEPENDENT_COMMANDS.has(cmd)) {
-    console.error(`unknown command "${cmd}"\n${HELP}`);
+  const notes = [...(r.host.notes ?? [])];
+  if (r.scope === "project") notes.push("This directory is committable — the roster travels with the repo.");
+  if (notes.length) {
+    console.log("\nnotes");
+    for (const n of notes) console.log(hang(n, "  "));
+  }
+  warnUnverified(r.profile);
+  return 0;
+});
+
+const cmdDisable = dependent(({ names, agentOpts }) => {
+  const r = placement.disable({ ...agentOpts, only: names });
+  console.log(`disabled ${r.removed.length}${r.removed.length ? `: ${r.removed.join(", ")}` : ""}`);
+  console.log(`${r.remaining} still enabled in ${r.dir}`);
+
+  if (r.kept.length) {
+    console.log(`kept ${r.kept.length} locally modified: ${r.kept.join(", ")} (use --force)`);
+  }
+  return 0;
+});
+
+const COMMANDS = {
+  help: { run: () => { console.log(HELP); return 0; } },
+  list: { run: cmdList },
+  compose: { run: ({ opts, names }) => { printCompose(names, opts.pack ?? DEFAULT_PACK); return 0; } },
+  pack: { run: cmdPack },
+  tier: { run: cmdTier },
+  models: { run: cmdTier },
+  validate: { run: cmdValidate },
+  doctor: { run: cmdDoctor },
+  skill: { run: cmdSkill },
+  status: { run: cmdStatus },
+  enable: { run: cmdEnable },
+  install: { run: cmdEnable },
+  disable: { run: cmdDisable },
+  uninstall: { run: cmdDisable },
+};
+
+export async function main(argv = process.argv.slice(2)) {
+  const { opts, rest } = parse(argv);
+  assertKnownHost(opts.agent);
+  if (opts.help) {
+    console.log(HELP);
+    return 0;
+  }
+  const command = COMMANDS[rest[0] ?? "help"];
+  if (!command) {
+    console.error(`unknown command "${rest[0]}"\n${HELP}`);
     return 2;
   }
-
-  const host = selectAgent(opts);
-  const agentOpts = placementOptions(opts, host);
-
-  if (cmd === "doctor") return doctor(host.key);
-
-  if (cmd === "pack") {
-    if (names[0] !== "use" || !names[1] || names.length > 2) throw new Error("usage: staffed pack use <name>");
-    const next = resolvePack(names[1]);
-    const problems = validationProblems();
-    if (problems.length) throw new Error(`refusing to switch — configuration has ${problems.length} problem(s)`);
-    const r = placement.enable({ ...agentOpts, pack: next.key, only: [] });
-    console.log(`${r.dryRun ? "would use" : "active pack"} ${r.pack.key}${r.pack.experimental ? " (experimental preview)" : ""} — ${r.dryRun ? r.items.length : r.enabledTotal} roles ${r.dryRun ? "would be enabled" : "enabled"} in ${r.dir}`);
-    return 0;
-  }
-
-  if (cmd === "skill") {
-    const current = placement.status(agentOpts);
-    const enabled = current.items.filter((item) => item.state === "enabled").map((item) => item.persona.name);
-    if (!enabled.length) {
-      console.error(`nothing is enabled for agent ${host.label} (${opts.scope} scope).`);
-      return 1;
-    }
-    console.log(`# would go in ${host.skillDir(opts.scope, process.cwd())}/staffed/SKILL.md\n`);
-    console.log(generateSkill({ hostKey: host.key, enabled, personas: current.pack.personas, pack: current.pack.key }));
-    return 0;
-  }
-
-
-
-  if (cmd === "status") {
-    printStatus(placement.status(agentOpts));
-    return 0;
-  }
-
-  if (cmd === "enable" || cmd === "install") {
-    const problems = validationProblems();
-    if (problems.length) {
-      console.error(`refusing to enable — configuration has ${problems.length} problem(s):`);
-      for (const p of problems) console.error(`  - ${p}`);
-      return 1;
-    }
-    const r = placement.enable({ ...agentOpts, only: names });
-    const verb = r.dryRun ? "would enable" : r.mode === "link" ? "linked" : "enabled";
-    console.log(`${verb} ${r.items.length}${names.length ? "" : " (all)"} -> ${r.dir}`);
-    console.log(
-      `agent ${r.host.label}, scope ${r.scope}, pack ${r.pack.key}${r.pack.experimental ? " (experimental preview)" : ""}, profile ${r.profile.key}, mode ${r.mode}` +
-        (r.enabledTotal ? `, ${r.enabledTotal} enabled in total` : ""),
-    );
-    if (r.dryRun) for (const i of r.items) console.log(`  ${i.file}  (${LABEL[i.state] ?? i.state})`);
-
-    const notes = [...(r.host.notes ?? [])];
-    if (r.scope === "project") notes.push("This directory is committable — the roster travels with the repo.");
-    if (notes.length) {
-      console.log("\nnotes");
-      for (const n of notes) console.log(wrap(n, "  "));
-    }
-    warnUnverified(r.profile);
-    return 0;
-  }
-
-  if (cmd === "disable" || cmd === "uninstall") {
-    const r = placement.disable({ ...agentOpts, only: names });
-    console.log(`disabled ${r.removed.length}${r.removed.length ? `: ${r.removed.join(", ")}` : ""}`);
-    console.log(`${r.remaining} still enabled in ${r.dir}`);
-
-    if (r.kept.length) {
-      console.log(`kept ${r.kept.length} locally modified: ${r.kept.join(", ")} (use --force)`);
-    }
-    return 0;
-  }
-
-  throw new Error(`unhandled command "${cmd}"`);
+  return command.run({ opts, argv, names: rest.slice(1) });
 }

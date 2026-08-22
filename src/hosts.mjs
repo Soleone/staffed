@@ -175,6 +175,13 @@ export function resolveHost(name = DEFAULT_HOST) {
   return { key: name, ...host };
 }
 
+/** Early validation for commands that may never reach resolveHost. */
+export function assertKnownHost(name) {
+  if (name !== undefined && !Object.hasOwn(HOSTS, name)) {
+    throw new Error(`unknown agent "${name}". known: ${Object.keys(HOSTS).join(", ")}`);
+  }
+}
+
 export function targetDir(host, scope, cwd) {
   return scope === "project" ? host.projectDir(cwd) : host.userDir();
 }

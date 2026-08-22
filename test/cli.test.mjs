@@ -400,20 +400,19 @@ test("removed brief command and options reject while help and status omit the fe
   } finally { rmSync(home, { recursive: true, force: true }); }
 });
 
-test("CLI user disable removes a matching tracked legacy Pi block and preserves surrounding bytes", () => {
+test("CLI rejects manifests tracking a legacy discovery.brief instead of migrating them", () => {
   const home = tempHome("staffed-user-cleanup-");
   try {
     mkdirSync(join(home, ".pi", "agent"), { recursive: true });
     run(["enable", "builder"], { env: { HOME: home } });
-    const block = "<!-- staffed:start -->\nlegacy\n<!-- staffed:end -->";
-    const brief = join(home, ".pi", "agent", "AGENTS.md");
-    writeFileSync(brief, `before\n${block}\nafter\n`);
     const manifestPath = join(home, ".pi", "agent", "agents", ".staffed.json");
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-    manifest.discovery.brief = { type: "block", hash: hashText(block) };
+    manifest.discovery.brief = { type: "block", hash: hashText("block") };
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-    run(["disable"], { env: { HOME: home } });
-    assert.equal(readFileSync(brief, "utf8"), "before\n\nafter\n");
-    assert.equal(existsSync(manifestPath), false);
+    for (const args of [["disable"], ["enable", "pm"], ["enable", "pm", "--force"]]) {
+      const result = runResult(args, { env: { HOME: home } });
+      assert.equal(result.status, 1, args.join(" "));
+      assert.match(result.stderr, /discovery.brief is not supported/);
+    }
   } finally { rmSync(home, { recursive: true, force: true }); }
 });

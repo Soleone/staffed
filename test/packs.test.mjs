@@ -1,22 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { disable, enable, status } from "../src/install.mjs";
-import { hashText } from "../src/ownership.mjs";
 
 const LEGACY_BLOCK = "<!-- staffed:start -->\nlegacy guidance\n<!-- staffed:end -->";
-function trackLegacyBrief(cwd, content = `prefix\n${LEGACY_BLOCK}\nsuffix\n`) {
-  const file = join(cwd, "AGENTS.md");
-  writeFileSync(file, content);
-  const manifestPath = join(cwd, ".pi", "agents", ".staffed.json");
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  manifest.discovery = { ...(manifest.discovery ?? {}), brief: { type: "block", hash: hashText(LEGACY_BLOCK) } };
-  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-  return { file, manifestPath };
-}
 
 const tempProject = () => mkdtempSync(join(tmpdir(), "staffed-pack-project-"));
 const readManifest = (cwd) => JSON.parse(readFileSync(join(cwd, ".pi", "agents", ".staffed.json"), "utf8"));
@@ -252,113 +242,19 @@ test("full uninstall removes empty Staffed discovery directories but preserves f
   } finally { rmSync(foreign, { recursive: true, force: true }); }
 });
 
-test("project enable and pack switch clean a matching tracked legacy block without touching surrounding bytes", () => {
+test("schema-2 manifests tracking a legacy discovery.brief are rejected before any mutation", () => {
   const cwd = tempProject();
   try {
     enable(opts(cwd, { only: ["builder"] }));
-    const { file } = trackLegacyBrief(cwd);
-    chmodSync(file, 0o664);
-    const oldUmask = process.umask(0o027);
-    try {
-      enable(opts(cwd, { only: ["pm"] }));
-    } finally {
-      process.umask(oldUmask);
-    }
-    assert.equal(readFileSync(file, "utf8"), "prefix\n\nsuffix\n");
-    assert.equal(statSync(file).mode & 0o777, 0o664);
-    assert.equal(Object.hasOwn(readManifest(cwd).discovery, "brief"), false);
-    trackLegacyBrief(cwd);
-    enable(opts(cwd, { pack: "detective" }));
-    assert.equal(readFileSync(file, "utf8"), "prefix\n\nsuffix\n");
-    assert.equal(readManifest(cwd).pack, "detective");
+    const manifestPath = join(cwd, ".pi", "agents", ".staffed.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    manifest.discovery.brief = { type: "block", hash: "0123456789abcdef" };
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    const before = readFileSync(manifestPath, "utf8");
+    for (const force of [false, true]) assert.throws(() => enable(opts(cwd, { only: ["pm"], force })), /discovery.brief is not supported/);
+    assert.equal(readFileSync(manifestPath, "utf8"), before);
+    assert.equal(existsSync(join(cwd, ".pi", "agents", "pm.md")), false);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
-});
-
-test("modified tracked legacy blocks stop enable and disable atomically; force remains block-scoped", () => {
-  for (const operation of ["enable", "disable"]) {
-    const cwd = tempProject();
-    try {
-      enable(opts(cwd, { only: ["builder"] }));
-      const { file, manifestPath } = trackLegacyBrief(cwd, `before\n${LEGACY_BLOCK.replace("legacy", "modified")}\nafter`);
-      const role = join(cwd, ".pi", "agents", "builder.md");
-      const beforeRole = readFileSync(role, "utf8"), beforeManifest = readFileSync(manifestPath, "utf8");
-      const invoke = (force = false) => operation === "enable"
-        ? enable(opts(cwd, { only: ["pm"], force }))
-        : disable(opts(cwd, { only: ["builder"], force }));
-      assert.throws(() => invoke(), /modified legacy Staffed brief/);
-      assert.equal(readFileSync(role, "utf8"), beforeRole);
-      assert.equal(readFileSync(manifestPath, "utf8"), beforeManifest);
-      invoke(true);
-      assert.equal(readFileSync(file, "utf8"), "before\n\nafter");
-      if (existsSync(manifestPath)) assert.equal(Object.hasOwn(readManifest(cwd).discovery ?? {}, "brief"), false);
-    } finally { rmSync(cwd, { recursive: true, force: true }); }
-  }
-});
-
-test("dry runs preflight but do not migrate a tracked legacy block or manifest", () => {
-  const cwd = tempProject();
-  try {
-    enable(opts(cwd, { only: ["builder"] }));
-    const { file, manifestPath } = trackLegacyBrief(cwd);
-    const beforeFile = readFileSync(file, "utf8"), beforeManifest = readFileSync(manifestPath, "utf8");
-    enable(opts(cwd, { only: ["pm"], dryRun: true }));
-    assert.equal(readFileSync(file, "utf8"), beforeFile);
-    assert.equal(readFileSync(manifestPath, "utf8"), beforeManifest);
-    disable(opts(cwd, { dryRun: true }));
-    assert.equal(readFileSync(file, "utf8"), beforeFile);
-    assert.equal(readFileSync(manifestPath, "utf8"), beforeManifest);
-  } finally { rmSync(cwd, { recursive: true, force: true }); }
-});
-
-test("missing legacy targets and marker-free files only prune the tracked record", () => {
-  for (const state of ["missing", "marker-free"]) {
-    const cwd = tempProject();
-    try {
-      enable(opts(cwd, { only: ["builder"] }));
-      const { file } = trackLegacyBrief(cwd, state === "missing" ? LEGACY_BLOCK : "user notes\n");
-      if (state === "missing") rmSync(file);
-      enable(opts(cwd, { only: ["builder"] }));
-      assert.equal(existsSync(file), state !== "missing");
-      if (state === "marker-free") assert.equal(readFileSync(file, "utf8"), "user notes\n");
-      assert.equal(Object.hasOwn(readManifest(cwd).discovery, "brief"), false);
-    } finally { rmSync(cwd, { recursive: true, force: true }); }
-  }
-});
-
-test("malformed tracked markers and unsafe target types fail even with force before mutation", () => {
-  const malformed = [
-    "<!-- staffed:start -->broken",
-    "<!-- staffed:end -->\n<!-- staffed:start -->",
-    `${LEGACY_BLOCK}\n${LEGACY_BLOCK}`,
-  ];
-  for (const content of malformed) {
-    const cwd = tempProject();
-    try {
-      enable(opts(cwd, { only: ["builder"] }));
-      const { manifestPath } = trackLegacyBrief(cwd, content);
-      const before = readFileSync(manifestPath, "utf8");
-      for (const force of [false, true]) assert.throws(() => enable(opts(cwd, { only: ["pm"], force })), /malformed/);
-      assert.equal(readFileSync(manifestPath, "utf8"), before);
-      assert.equal(existsSync(join(cwd, ".pi", "agents", "pm.md")), false);
-    } finally { rmSync(cwd, { recursive: true, force: true }); }
-  }
-
-  for (const kind of ["symlink", "directory"]) {
-    const cwd = tempProject(), outside = mkdtempSync(join(tmpdir(), "staffed-brief-target-"));
-    try {
-      enable(opts(cwd, { only: ["builder"] }));
-      const { file, manifestPath } = trackLegacyBrief(cwd);
-      rmSync(file);
-      if (kind === "symlink") { const victim = join(outside, "victim"); writeFileSync(victim, LEGACY_BLOCK); symlinkSync(victim, file); }
-      else { mkdirSync(file); writeFileSync(join(file, "victim"), "keep"); }
-      const before = readFileSync(manifestPath, "utf8");
-      for (const force of [false, true]) assert.throws(() => disable(opts(cwd, { force })), /symlink or non-file/);
-      assert.equal(readFileSync(manifestPath, "utf8"), before);
-      assert.equal(existsSync(join(cwd, ".pi", "agents", "builder.md")), true);
-      if (kind === "directory") assert.equal(readFileSync(join(file, "victim"), "utf8"), "keep");
-      else assert.equal(readFileSync(join(outside, "victim"), "utf8"), LEGACY_BLOCK);
-    } finally { rmSync(cwd, { recursive: true, force: true }); rmSync(outside, { recursive: true, force: true }); }
-  }
 });
 
 test("untracked marker blocks are untouched by lifecycle operations including force", () => {

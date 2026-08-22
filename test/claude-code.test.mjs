@@ -16,17 +16,6 @@ const enablePrepared = (opts) => prepared(() => enable(opts));
 const disablePrepared = (opts) => prepared(() => disable(opts));
 const statusPrepared = (opts) => prepared(() => status(opts));
 
-function seedLegacy(cwd, text) {
-  enablePrepared({ host: "claude", scope: "project", cwd, only: ["builder"] });
-  const block = "<!-- staffed:start -->\nlegacy\n<!-- staffed:end -->";
-  writeFileSync(join(cwd, "CLAUDE.md"), text.replace("BLOCK", block));
-  const manifestPath = join(cwd, ".claude", "agents", ".staffed.json");
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  manifest.discovery.brief = { type: "block", hash: hashText(block) };
-  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-  return { block, manifestPath };
-}
-
 test("Claude Code is enabled for CLI and Desktop Code configuration", () => {
   assert.equal(HOSTS.claude.supported, true);
   assert.equal(resolveHost("claude").key, "claude");
@@ -47,30 +36,18 @@ test("Claude rendering and skill retain explicit activation without Pi-only cont
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
 
-test("Claude project lifecycle removes only a tracked legacy CLAUDE.md block", () => {
+test("schema-2 manifests tracking a legacy discovery.brief are rejected before any mutation", () => {
   const cwd = mkdtempSync(join(tmpdir(), "staffed-claude-cleanup-"));
   try {
-    const { manifestPath } = seedLegacy(cwd, "prefix\nBLOCK\nsuffix\n");
     enablePrepared({ host: "claude", scope: "project", cwd, only: ["builder"] });
-    assert.equal(readFileSync(join(cwd, "CLAUDE.md"), "utf8"), "prefix\n\nsuffix\n");
-    assert.equal(Object.hasOwn(JSON.parse(readFileSync(manifestPath, "utf8")).discovery, "brief"), false);
-    disablePrepared({ host: "claude", scope: "project", cwd });
-    assert.equal(existsSync(manifestPath), false);
-  } finally { rmSync(cwd, { recursive: true, force: true }); }
-});
-
-test("Claude legacy cleanup fails closed on malformed tracked markers before role mutation", () => {
-  const cwd = mkdtempSync(join(tmpdir(), "staffed-claude-malformed-"));
-  try {
-    const { manifestPath } = seedLegacy(cwd, "BLOCK");
-    writeFileSync(join(cwd, "CLAUDE.md"), "<!-- staffed:start -->\nbroken\n");
-    const agent = join(cwd, ".claude", "agents", "builder.md");
-    const beforeAgent = readFileSync(agent, "utf8");
-    const beforeManifest = readFileSync(manifestPath, "utf8");
+    const manifestPath = join(cwd, ".claude", "agents", ".staffed.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    manifest.discovery.brief = { type: "block", hash: hashText("<!-- staffed:start -->\nlegacy\n<!-- staffed:end -->") };
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    const beforeAgent = readFileSync(join(cwd, ".claude", "agents", "builder.md"), "utf8");
     for (const force of [false, true]) {
-      assert.throws(() => disablePrepared({ host: "claude", scope: "project", cwd, force }), /malformed/);
-      assert.equal(readFileSync(agent, "utf8"), beforeAgent);
-      assert.equal(readFileSync(manifestPath, "utf8"), beforeManifest);
+      assert.throws(() => enablePrepared({ host: "claude", scope: "project", cwd, only: ["pm"], force }), /discovery.brief is not supported/);
+      assert.equal(readFileSync(join(cwd, ".claude", "agents", "builder.md"), "utf8"), beforeAgent);
     }
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });

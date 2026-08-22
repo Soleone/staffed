@@ -12,22 +12,13 @@
 // "staff this project" work in plain English instead of requiring a slash command.
 
 import { join } from "node:path";
-import { DEFAULT_PACK, dimensionsFor, resolvePack } from "./packs.mjs";
+import { DEFAULT_PACK, packSuffix, dimensionsFor, resolvePack } from "./packs.mjs";
+import { wrap } from "./text.mjs";
 
 export const SKILL_NAME = "staffed";
 
-const wrap = (text, width = 88) => {
-  const out = [];
-  let line = "";
-  for (const word of text.split(/\s+/)) {
-    if (line && `${line} ${word}`.length > width) {
-      out.push(line);
-      line = word;
-    } else line = line ? `${line} ${word}` : word;
-  }
-  if (line) out.push(line);
-  return out.join("\n");
-};
+/** Skill prose flows at 88 columns. */
+const flow = (text, width) => wrap(text, width ?? 88);
 
 function chain(stages) {
   const parts = [];
@@ -85,8 +76,8 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     "---",
     `name: ${SKILL_NAME}`,
     "description: >-",
-    ...wrap(
-      `Staff a project with ${pack.label}${pack.experimental ? " (experimental preview)" : ""}, a coordinated ${workerLabel} roster for ${pack.description.toLowerCase()} Use ` +
+    ...flow(
+      `Staff a project with ${pack.label}${packSuffix(pack)}, a coordinated ${workerLabel} roster for ${pack.description.toLowerCase()} Use ` +
         `ONLY when explicitly engaged: "staff this project", "use Staffed", ${invocation}, ` +
         `or a request combining one of these exact enabled Staffed roles with behavioral modifiers or aliases: ${enabledRoleNames.join(", ")}, or a request to launch a subagent at a named tier (fast, balanced, strong, or deep) or with a concrete model — model selection, not roster work. ` +
         `Examples: ${activationExamples}. ` +
@@ -100,13 +91,13 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     "",
     "# Staffed",
     "",
-    wrap(
+    flow(
       "You are the orchestrator, not a worker. Decompose the goal, dispatch the smallest sufficient " +
         `set of personas with ${dispatchTool}, validate their output contracts, and loop back ` +
         "only when a material failure requires it. One persona is a valid staffed pipeline.",
     ),
     "",
-    wrap(
+    flow(
       "Other subagent rosters and delegation skills may be installed alongside Staffed; while " +
         "Staffed is engaged it owns delegation. Dispatch only Staffed personas, treat their names " +
         "as authoritative when another roster defines the same one, and keep Staffed sizing, " +
@@ -116,7 +107,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     "",
     "## Size the pipeline to the work",
     "",
-    wrap(
+    flow(
       "Default to one actor. Every additional stage must resolve a named uncertainty or material " +
         "risk that the current actor cannot own. Dispatching adds latency, cost, and a fresh context, " +
         "so never add a persona merely because the work can be split further.",
@@ -126,7 +117,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     "|---|---|",
     ...rows,
     "",
-    wrap(
+    flow(
       "Skipping stages is normal. Reach for the full pipeline only when the matter is genuinely " +
         "new and uncertain. Before launching more than two personas, state the planned dispatch " +
         "count and the specific risk or unknown each one resolves; shrink the plan if that case is weak.",
@@ -134,11 +125,11 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     "",
     "## Risk gates",
     "",
-    wrap(pack.riskGate),
+    flow(pack.riskGate),
     "",
     "## Compact by default",
     "",
-    wrap(
+    flow(
       "Ask every persona for the shortest artifact that lets the next decision or action succeed. " +
         "It must not restate upstream context, fill sections with speculative possibilities, or keep " +
         "investigating after its definition of done is met. Expand only when complexity, evidence, or " +
@@ -148,20 +139,20 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     "",
     "## Effort and escalation",
     "",
-    wrap(
+    flow(
       "Every dispatch starts at effort `low` unless the user requested otherwise or approved an " +
         "escalation. Put `Effort: low`, `Effort: medium`, or `Effort: high` in the task. Effort controls " +
         "how far the persona investigates, not the care or correctness of its work. Low means the " +
         "shortest credible pass, not a careless one.",
     ),
     "",
-    wrap(
+    flow(
       "Before expanding, ask: can downstream act; could the remaining uncertainty materially change " +
         "that action; and is the next investigation likely to resolve it? Stop when the handoff is " +
         "dependable and more work is unlikely to change it. Do not silently raise effort.",
     ),
     "",
-    wrap(
+    flow(
       "When material uncertainty remains, the persona stops and returns an `## Escalation` naming " +
         "`Axis` (`effort`, `tier`, or `both`), `Requested`, `Reason`, `Expected gain`, and `Safe fallback`. " +
         "Approve more effort when additional investigation can resolve the issue; approve a higher " +
@@ -172,7 +163,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     "",
     "## Compose a role (optional)",
     "",
-    wrap(
+    flow(
       "A composition is one role plus at most one mode from each optional dimension: stance, drive, lens, audience, and voice. Default to the plain role and add a modifier only when the user requested it or it addresses a named uncertainty or risk. Honor user modifiers. Every selected modifier must earn a material change; never fill every dimension by default. Modifiers never override role scope, correctness, effort, model tier, safety, permissions, or output contracts.",
     ),
     "",
@@ -185,7 +176,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     "",
     `roles: ${stages.map((stage) => `\`${stage.name}\``).join(", ")}`,
     "",
-    wrap(
+    flow(
       `Matching is case-insensitive but exact: accept only canonical names or listed aliases, never arbitrary prefixes. If a modifier appears, the user asks about options, or you must select a composition, read \`references/composition.md\` before dispatching. Otherwise do not load it. Before dispatch, state a one-line receipt such as \`${receiptExample}\` Repeat that exact canonical receipt in the final response so non-interactive callers retain it. A receipt is not enough: the persona task itself must include \`Composition:\` with canonical role and mode names plus one concise \`Behavior:\` line for every selected mode, copied from that mode's \`Dispatch behavior\` in the reference. Explicitly tell the persona that role scope, truth, correctness, safety, effort, model tier, permissions, and output contracts take precedence over every modifier.`,
     ),
     "",
@@ -201,7 +192,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
       return `| \`${s.name}\` | ${p?.tier ?? "inherit"} | ${p?.effort ?? "low"} | ${blurb(s.name) || s.role} |`;
     }),
     "",
-    wrap(
+    flow(
       "Route by each persona's `description`, which states what it owns and what it must refuse. " +
         "One persona, one job. Full order when you do run end to end: " +
         `${chain(stages)}.`,
@@ -209,7 +200,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     "",
     "## Model tiers",
     "",
-    wrap(
+    flow(
       "A persona's tier names a row in `models.json`, which maps `fast`, `balanced`, `strong`, and `deep` to concrete " +
         "model + thinking values: the part of Staffed that works without any persona. When the user names a tier " +
         "(\"launch a deep tier subagent\") or an escalation approves a higher tier, run `staffed tier --compact` to " +
@@ -235,7 +226,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     const missing = pack.stages.filter((s) => !set.has(s.name)).map((s) => s.name);
     body.push(
       "",
-      wrap(`Not installed: ${missing.join(", ")} — cover those stages yourself or skip them.`),
+      flow(`Not installed: ${missing.join(", ")} — cover those stages yourself or skip them.`),
     );
   }
 
@@ -246,7 +237,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     "",
     "## Passing work between personas",
     "",
-    wrap(
+    flow(
       "Each artifact-owning persona writes to `artifacts/<agent>/index.md` and returns that path. " +
         (codexOrClaude ? "" : "For a canonical artifact dispatch, make one foreground `subagent` call with `output: false`; never set the tool's `output` path, because that path becomes authoritative and relocates the artifact under the subagent runtime. Do not revive or redispatch a completed persona merely to repair an output path. ") +
         "Pass paths downstream, never the full document — that keeps context flat across a long " +
@@ -264,7 +255,7 @@ export function generateSkill({ hostKey = "pi", enabled, personas = [], pack: pa
     const parallel = pack.parallelism
       .filter((item) => item.requires.every(has))
       .map((item) => item.text);
-    if (parallel.length) body.push("", "## Parallelism", "", wrap(parallel.join(" ")));
+    if (parallel.length) body.push("", "## Parallelism", "", flow(parallel.join(" ")));
   }
   body.push("");
   return body.join("\n");

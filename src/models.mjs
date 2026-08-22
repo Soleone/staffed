@@ -37,6 +37,9 @@ export function normalizeTier(value) {
 
 export const formatTier = (t) => (t == null ? "—" : t.thinking ? `${t.model}:${t.thinking}` : t.model);
 
+// Tiers every profile must define. `strong` is optional and falls back to balanced.
+const REQUIRED_TIERS = ["fast", "balanced", "deep"];
+
 /**
  * Resolve a profile name to a tier -> { model, thinking } map.
  * `"none"` yields a null map, meaning "stamp no model at all" — the host default
@@ -50,8 +53,8 @@ export function resolveProfile(name, cfg) {
   if (!raw) {
     throw new Error(`unknown profile "${key}". models.json has: ${Object.keys(cfg.profiles ?? {}).join(", ")}`);
   }
-  const legacy = ["fast", "balanced", "deep"];
-  const missing = legacy.filter((t) => !raw[t]);
+
+  const missing = REQUIRED_TIERS.filter((t) => !raw[t]);
   if (missing.length) throw new Error(`profile "${key}" is missing tier(s): ${missing.join(", ")}`);
 
   const fallbacks = [];
@@ -92,6 +95,21 @@ function profileProviderLabel(profile) {
   return PROFILE_PROVIDERS[profile]?.join(", ") ?? profile;
 }
 
+/** Validate one tier value against its profile's provider set, collecting problems. */
+function checkTier(problems, key, tier, raw) {
+  try {
+    const normalized = normalizeTier(raw[tier]);
+    if (!normalized) throw new Error("tier config must not be null");
+    if (!matchesProfileProvider(key, normalized.model)) {
+      problems.push(
+        `models.json: profile "${key}" tier "${tier}" must use a model from the ${profileProviderLabel(key)} provider set`,
+      );
+    }
+  } catch (error) {
+    problems.push(`models.json: profile "${key}" tier "${tier}": ${error.message}`);
+  }
+}
+
 /** Validate models.json structure without reading or writing disk. */
 export function validateModelConfig(cfg) {
   const problems = [];
@@ -116,35 +134,14 @@ export function validateModelConfig(cfg) {
       problems.push(`models.json: profile "${key}" must be an object`);
       continue;
     }
-    for (const tier of ["fast", "balanced", "deep"]) {
+    for (const tier of REQUIRED_TIERS) {
       if (raw[tier] == null) {
         problems.push(`models.json: profile "${key}" is missing tier "${tier}"`);
         continue;
       }
-      try {
-        const normalized = normalizeTier(raw[tier]);
-        if (!matchesProfileProvider(key, normalized.model)) {
-          problems.push(
-            `models.json: profile "${key}" tier "${tier}" must use a model from the ${profileProviderLabel(key)} provider set`,
-          );
-        }
-      } catch (error) {
-        problems.push(`models.json: profile "${key}" tier "${tier}": ${error.message}`);
-      }
+      checkTier(problems, key, tier, raw);
     }
-    if (Object.hasOwn(raw, "strong")) {
-      try {
-        const normalized = normalizeTier(raw.strong);
-        if (!normalized) throw new Error("tier config must not be null");
-        if (!matchesProfileProvider(key, normalized.model)) {
-          problems.push(
-            `models.json: profile "${key}" tier "strong" must use a model from the ${profileProviderLabel(key)} provider set`,
-          );
-        }
-      } catch (error) {
-        problems.push(`models.json: profile "${key}" tier "strong": ${error.message}`);
-      }
-    }
+    if (Object.hasOwn(raw, "strong")) checkTier(problems, key, "strong", raw);
   }
   return problems;
 }

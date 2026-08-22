@@ -48,8 +48,8 @@ test("manifest records fail closed by slot and required value type", () => {
     { ...base, discovery: { skill: { type: "block", hash: "a".repeat(16) } } },
     { ...base, discovery: { composition: { type: "copy", hash: "a".repeat(16) } } },
     { ...base, references: { composition: { type: "block", hash: "a".repeat(16) } } },
-    { ...base, discovery: { brief: { type: "copy", hash: "a".repeat(16) } } },
     { ...base, discovery: { other: { type: "copy", hash: "a".repeat(16) } } },
+    { ...base, discovery: { brief: { type: "block", hash: "b".repeat(16) } } },
   ];
   for (const manifest of invalid) {
     assert.throws(() => normalizeManifest(manifest, { hostKey: "pi", scope: "project" }), /manifest/);
@@ -61,9 +61,4 @@ test("manifest records fail closed by slot and required value type", () => {
   const normalized = normalizeManifest(withComposition, { hostKey: "pi", scope: "project" });
   assert.equal(normalized.pack, "detective");
   assert.equal(normalized.references.composition.type, "copy");
-  const legacyBrief = normalizeManifest(
-    { ...base, discovery: { brief: { type: "block", hash: "b".repeat(16) } } },
-    { hostKey: "pi", scope: "project" },
-  );
-  assert.deepEqual(legacyBrief.discovery.brief, { type: "block", hash: "b".repeat(16) });
 });

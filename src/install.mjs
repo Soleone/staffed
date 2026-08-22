@@ -5,7 +5,6 @@ import { ROOT } from "./personas.mjs";
 import { DEFAULT_PACK, resolvePack } from "./packs.mjs";
 import { resolveProfile, tierFor } from "./models.mjs";
 import { resolveHost, targetDir } from "./hosts.mjs";
-import { planLegacyBriefCleanup } from "./legacy-brief-cleanup.mjs";
 import { compositionReferencePath, generateCompositionReference, generateSkill, skillPath } from "./skill.mjs";
 import { hashText, inspectFile, normalizeManifest, removeDecision, writeDecision } from "./ownership.mjs";
 
@@ -31,25 +30,13 @@ function skillAncestorProblem(path) {
   return stat.isSymbolicLink() || !stat.isDirectory() ? ancestor : null;
 }
 
-function assertSafeSkillPath(path) {
-  const unsafe = skillAncestorProblem(path);
-  if (unsafe) throw new Error(`refusing to access Staffed skill through symlink or non-directory ancestor ${unsafe}`);
+function assertSafeDiscoveryAncestor(kind, path) {
+  const unsafe = kind.ancestorProblem(path);
+  if (unsafe) throw new Error(kind.refuses(unsafe));
 }
 
-function assertSafeReferencePath(path) {
-  const unsafe = referenceAncestorProblem(path);
-  if (unsafe) throw new Error(`refusing to access composition reference through symlink or non-directory ancestor ${unsafe}`);
-}
-
-function inspectSkillFile(path, record) {
-  const unsafeAncestor = skillAncestorProblem(path);
-  return unsafeAncestor
-    ? { path, record, state: "replaced", unsafeAncestor }
-    : inspectFile(path, record);
-}
-
-function inspectReferenceFile(path, record) {
-  const unsafeAncestor = referenceAncestorProblem(path);
+function inspectDiscoveryFile(kind, path, record) {
+  const unsafeAncestor = kind.ancestorProblem(path);
   return unsafeAncestor
     ? { path, record, state: "replaced", unsafeAncestor }
     : inspectFile(path, record);
@@ -275,22 +262,45 @@ function healthyNames(host, dir, files, pack) {
   return pack.personas.filter((persona) => inspectFile(join(dir, host.filename(persona)), files[host.filename(persona)]).state === "enabled").map((p) => p.name);
 }
 
+// Discovery artifacts: rendered files that make an installed roster discoverable by
+// its host session. Every lifecycle step below treats them uniformly through this table.
+const DISCOVERY_KINDS = [
+  {
+    key: "skill",
+    section: "discovery",
+    path: (dir) => skillPath(dir),
+    content: ({ hostKey, names, pack }) => generateSkill({ hostKey, enabled: names, personas: pack.personas, pack: pack.key }),
+    ancestorProblem: skillAncestorProblem,
+    refuses: (ancestor) => `refusing to access Staffed skill through symlink or non-directory ancestor ${ancestor}`,
+  },
+  {
+    key: "composition",
+    section: "references",
+    path: (dir) => compositionReferencePath(dir),
+    content: ({ names, pack }) => generateCompositionReference({ pack: pack.key, personas: pack.personas.filter((p) => names.includes(p.name)) }),
+    ancestorProblem: referenceAncestorProblem,
+    refuses: (ancestor) => `refusing to access composition reference through symlink or non-directory ancestor ${ancestor}`,
+  },
+];
+
 function discoveryStatus(host, scope, cwd, manifest, names, pack) {
-  const skillFile = skillPath(host.skillDir(scope, cwd));
-  const skillText = generateSkill({ hostKey: host.key, enabled: names, personas: pack.personas, pack: pack.key });
-  const si = inspectSkillFile(skillFile, manifest?.discovery?.skill);
-  const skill = { ...si, state: si.state === "enabled" ? (readFileSync(skillFile, "utf8") === skillText ? "current" : "stale") : si.state };
-  const referenceFile = compositionReferencePath(host.skillDir(scope, cwd));
-  const referenceText = generateCompositionReference({ pack: pack.key, personas: pack.personas.filter((p) => names.includes(p.name)) });
-  const ri = inspectReferenceFile(referenceFile, manifest?.references?.composition);
-  const composition = { ...ri, state: ri.state === "enabled" ? (readFileSync(referenceFile, "utf8") === referenceText ? "current" : "stale") : ri.state, content: referenceText };
-  return { skill: { ...skill, content: skillText }, composition };
+  const status = {};
+  for (const kind of DISCOVERY_KINDS) {
+    const path = kind.path(host.skillDir(scope, cwd));
+    const content = kind.content({ hostKey: host.key, names, pack });
+    const inspected = inspectDiscoveryFile(kind, path, manifest?.[kind.section]?.[kind.key]);
+    const state = inspected.state === "enabled"
+      ? (readFileSync(path, "utf8") === content ? "current" : "stale")
+      : inspected.state;
+    status[kind.key] = { kind, path, record: inspected.record, unsafeAncestor: inspected.unsafeAncestor, state, content };
+  }
+  return status;
 }
 
 export function enable(opts) {
   const p = plan(opts); const { force = false, dryRun = false } = opts;
   if (p.collisions.length) throw new Error(`${p.host.label} agent name collision(s):\n${p.collisions.map((c) => `  ${c.name}: ${c.path}`).join("\n")}`);
-  if (p.switching && opts.skill === false && (p.manifest.discovery?.skill || p.manifest.references?.composition)) {
+  if (p.switching && opts.skill === false && DISCOVERY_KINDS.some((kind) => p.manifest?.[kind.section]?.[kind.key])) {
     throw new Error("--no-skill cannot switch a pack that has tracked discovery; switch normally, then disable discovery if needed");
   }
   const blocked = p.items.filter((i) => writeDecision(i.state, { force }) === "block");
@@ -312,25 +322,20 @@ export function enable(opts) {
     .map((persona) => persona.name);
   const cwd = opts.cwd ?? process.cwd();
   const d = discoveryStatus(p.host, p.scope, cwd, p.manifest, names, p.pack);
-  const desired = opts.skill !== false ? [["skill", d.skill], ["composition", d.composition]] : [];
-  const legacyCleanup = p.manifest?.discovery?.brief
-    ? planLegacyBriefCleanup({ hostKey: p.host.key, scope: p.scope, cwd, home: opts.home, record: p.manifest.discovery.brief, force })
-    : null;
+  const desired = opts.skill !== false ? Object.values(d) : [];
   assertSafeProjectMutationPaths(p.scope, cwd, [
     join(p.dir, MANIFEST),
     ...p.items.map((item) => item.path),
     ...p.previousItems.map((item) => item.path),
-    ...desired.map(([, item]) => item.path),
-    ...(legacyCleanup ? [legacyCleanup.path] : []),
+    ...desired.map((item) => item.path),
   ]);
-  for (const [, item] of desired) {
+  for (const item of desired) {
     if (["foreign", "modified", "replaced"].includes(item.state) && !force) blocked.push(item);
   }
   if (blocked.length) throw new Error(`refusing to overwrite ${blocked.length} unowned or modified item(s):\n${blocked.map((i) => `  ${i.file ?? i.path}`).join("\n")}\nRe-run with --force to overwrite.`);
-  for (const [key, item] of desired) {
-    if (key === "skill") assertSafeSkillPath(item.path);
-    if (key === "composition") assertSafeReferencePath(item.path);
-    assertSafeDiscoveryTarget(item.path ?? item.file);
+  for (const item of desired) {
+    assertSafeDiscoveryAncestor(item.kind, item.path);
+    assertSafeDiscoveryTarget(item.path);
   }
   if (dryRun) return { ...p, wrote: [], dryRun: true };
   mkdirSync(p.dir, { recursive: true });
@@ -338,21 +343,16 @@ export function enable(opts) {
     join(p.dir, MANIFEST),
     ...p.items.map((item) => item.path),
     ...p.previousItems.map((item) => item.path),
-    ...desired.map(([, item]) => item.path),
-    ...(legacyCleanup?.action === "remove-block" ? [legacyCleanup.path] : []),
+    ...desired.map((item) => item.path),
   ];
   const committed = transactionalMutation(transactionPaths, () => {
-    const discovery = { ...(p.manifest?.discovery ?? {}) };
-    const references = { ...(p.manifest?.references ?? {}) };
-    if (legacyCleanup) {
-      if (legacyCleanup.action === "remove-block") atomicReplace(legacyCleanup.path, legacyCleanup.content, legacyCleanup.mode);
-      delete discovery.brief;
-    }
-    for (const [key, item] of desired) {
+    const tracked = {
+      discovery: { ...(p.manifest?.discovery ?? {}) },
+      references: { ...(p.manifest?.references ?? {}) },
+    };
+    for (const item of desired) {
       atomicReplace(item.path, item.content);
-      const record = { type: "copy", hash: hashText(item.content) };
-      if (key === "skill") discovery.skill = record;
-      else references.composition = record;
+      tracked[item.kind.section][item.kind.key] = { type: "copy", hash: hashText(item.content) };
     }
     const wrote = [];
     if (p.switching) {
@@ -364,7 +364,7 @@ export function enable(opts) {
       if (p.mode === "link") symlinkSync(join(ROOT, p.pack.agentsDir, item.persona.file), item.path); else writeFileSync(item.path, item.content);
       wrote.push(item.file);
     }
-    return { wrote, manifest: writeManifest(p, files, discovery, references) };
+    return { wrote, manifest: writeManifest(p, files, tracked.discovery, tracked.references) };
   });
   return { ...p, ...committed, enabledTotal: Object.keys(files).length, skill: d.skill, composition: d.composition };
 }
@@ -374,31 +374,21 @@ export function disable(opts) {
   if (!p.manifest) throw new Error(`nothing enabled by Staffed in ${p.dir}`);
   if (p.switching) throw new Error(`pack "${p.previousPack.key}" is active; switch packs with \`staffed pack use ${p.pack.key}\` before disabling its roles`);
   const cwd = opts.cwd ?? process.cwd();
+  const skillDir = p.host.skillDir(p.scope, cwd);
+  const trackedDiscovery = DISCOVERY_KINDS.filter((kind) => p.manifest[kind.section]?.[kind.key]);
   const mutationPaths = [join(p.dir, MANIFEST), ...p.items.map((item) => item.path)];
-  if (opts.skill !== false && p.manifest.discovery?.skill) mutationPaths.push(skillPath(p.host.skillDir(p.scope, cwd)));
-  if (opts.skill !== false && p.manifest.references?.composition) mutationPaths.push(compositionReferencePath(p.host.skillDir(p.scope, cwd)));
-  const legacyCleanup = p.manifest.discovery?.brief
-    ? planLegacyBriefCleanup({ hostKey: p.host.key, scope: p.scope, cwd, home: opts.home, record: p.manifest.discovery.brief, force: opts.force })
-    : null;
-  if (legacyCleanup) mutationPaths.push(legacyCleanup.path);
+  if (opts.skill !== false) for (const kind of trackedDiscovery) mutationPaths.push(kind.path(skillDir));
   assertSafeProjectMutationPaths(p.scope, cwd, mutationPaths);
   // Validate discovery targets before the first mutation so expected failures are atomic.
-  if (opts.skill !== false && p.manifest.discovery?.skill) {
-    const installedSkillPath = skillPath(p.host.skillDir(p.scope, cwd));
-    assertSafeSkillPath(installedSkillPath);
-    if (opts.force) assertSafeDiscoveryTarget(installedSkillPath);
-  }
-  if (opts.skill !== false && p.manifest.references?.composition) {
-    const referencePath = compositionReferencePath(p.host.skillDir(p.scope, cwd));
-    assertSafeReferencePath(referencePath);
-    if (opts.force) assertSafeDiscoveryTarget(referencePath);
+  if (opts.skill !== false) {
+    for (const kind of trackedDiscovery) {
+      const path = kind.path(skillDir);
+      assertSafeDiscoveryAncestor(kind, path);
+      if (opts.force) assertSafeDiscoveryTarget(path);
+    }
   }
   if (opts.dryRun) return { ...p, removed: [], kept: [], remaining: Object.keys(p.manifest.files).length, dryRun: true };
   const discovery = { ...(p.manifest.discovery ?? {}) };
-  if (legacyCleanup) {
-    if (legacyCleanup.action === "remove-block") atomicReplace(legacyCleanup.path, legacyCleanup.content, legacyCleanup.mode);
-    delete discovery.brief;
-  }
   const files = { ...p.manifest.files }, removed = [], kept = [];
   for (const item of p.items) {
     const inspected = inspectFile(item.path, files[item.file]);
@@ -410,27 +400,22 @@ export function disable(opts) {
   const names = healthyNames(p.host, p.dir, files, p.pack);
   const references = { ...(p.manifest.references ?? {}) };
   const d = discoveryStatus(p.host, p.scope, cwd, { ...p.manifest, files, discovery }, names, p.pack);
-  if (opts.skill !== false && discovery.skill) {
-    const raw = inspectFile(d.skill.path, discovery.skill), decision = removeDecision(raw.state, { force: opts.force });
-    if (!names.length) {
-      if (decision === "remove") { removeDiscoveryTarget(d.skill.path); removeEmptyDirectory(dirname(d.skill.path)); delete discovery.skill; }
-      else if (decision === "prune") delete discovery.skill;
-    } else if (raw.state === "enabled" || (opts.force && ["modified", "replaced"].includes(raw.state))) {
-      atomicReplace(d.skill.path, d.skill.content);
-      discovery.skill = { type: "copy", hash: hashText(d.skill.content) };
-    }
-  }
-  if (opts.skill !== false && references.composition) {
-    const raw = inspectFile(d.composition.path, references.composition), decision = removeDecision(raw.state, { force: opts.force });
-    if (!names.length) {
-      if (decision === "remove") {
-        removeDiscoveryTarget(d.composition.path);
-        removeEmptyDirectory(dirname(d.composition.path));
-        delete references.composition;
-      } else if (decision === "prune") delete references.composition;
-    } else if (raw.state === "enabled" || (opts.force && ["modified", "replaced"].includes(raw.state))) {
-      atomicReplace(d.composition.path, d.composition.content);
-      references.composition = { type: "copy", hash: hashText(d.composition.content) };
+  if (opts.skill !== false) {
+    const tracked = { discovery, references };
+    for (const kind of trackedDiscovery) {
+      const record = tracked[kind.section][kind.key], item = d[kind.key];
+      const raw = inspectFile(item.path, record);
+      const decision = removeDecision(raw.state, { force: opts.force });
+      if (!names.length) {
+        if (decision === "remove") {
+          removeDiscoveryTarget(item.path);
+          removeEmptyDirectory(dirname(item.path));
+          delete tracked[kind.section][kind.key];
+        } else if (decision === "prune") delete tracked[kind.section][kind.key];
+      } else if (raw.state === "enabled" || (opts.force && ["modified", "replaced"].includes(raw.state))) {
+        atomicReplace(item.path, item.content);
+        tracked[kind.section][kind.key] = { type: "copy", hash: hashText(item.content) };
+      }
     }
   }
 

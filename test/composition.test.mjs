@@ -142,10 +142,11 @@ test("npm pack dry-run contains runtime and preview files without dependencies o
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(result.stdout)[0];
   const files = new Set(report.files.map((file) => file.path));
-  for (const path of ["bin/staffed.mjs", "src/packs.mjs", "src/legacy-brief-cleanup.mjs", "catalog.json", "packs/detective/agents/investigator.md"]) {
+  for (const path of ["bin/staffed.mjs", "src/packs.mjs", "catalog.json", "packs/detective/agents/investigator.md"]) {
     assert.ok(files.has(path), `missing packed file ${path}`);
   }
   assert.equal(files.has("src/brief.mjs"), false);
+  assert.equal(files.has("src/legacy-brief-cleanup.mjs"), false);
   const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
   for (const field of ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]) {
     assert.equal(Object.hasOwn(pkg, field), false, `${field} must remain absent`);
