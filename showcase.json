@@ -8,6 +8,7 @@
   "year": 2026,
   "tech": ["Node.js", "Markdown"],
   "repo": "https://github.com/Soleone/staffed",
+  "live": "https://staffed.soleone.xyz",
   "media": {
     "hero": "demo/media/hero.png",
     "motion": "demo/media/demo.webp",
