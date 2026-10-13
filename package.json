@@ -31,7 +31,9 @@
     "tier": "node bin/staffed.mjs tier",
     "doctor": "node bin/staffed.mjs doctor",
     "enable": "node bin/staffed.mjs enable",
-    "status": "node bin/staffed.mjs status"
+    "status": "node bin/staffed.mjs status",
+    "demo": "npx -y @soleone/showcase@0.2.0 terminal --serve",
+    "media:capture": "npx -y -p @soleone/showcase@0.2.0 node scripts/capture-demo.mjs"
   },
   "type": "module",
   "bin": {

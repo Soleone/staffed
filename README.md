@@ -6,6 +6,8 @@ https://github.com/user-attachments/assets/72cc52a0-1cad-4dc9-9078-daeee21e505c
 
 https://github.com/user-attachments/assets/34e46e26-977e-4ba5-8d09-f8d1888866fd
 
+**[Try the CLI in your browser](https://staffed.soleone.xyz)**, no install. It installs the roles into an empty Claude Code setup; no agent runs.
+
 Staffed is a product-team pack for agent sessions: install the roles, ask for the expertise you need, and read the resulting artifacts. There is no runtime, only Markdown personas, a generated skill, and files in your project.
 
 ## Install

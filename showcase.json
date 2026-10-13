@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Soleone/showcase/main/schema/showcase.schema.json",
+  "title": "Staffed",
+  "pitch": "Staff any project with coordinated subagent roles. Use with Pi, OpenAI Codex, or Claude Code.",
+  "description": "Eleven Markdown personas, from PM and UX to builder and reviewer, plus a skill that tells your agent when to dispatch them. Each role writes its result to a file, so the next one picks up from there.",
+  "kind": "agent-extension",
+  "stage": "product",
+  "year": 2026,
+  "tech": ["Node.js", "Markdown"],
+  "repo": "https://github.com/Soleone/staffed",
+  "media": {
+    "hero": "demo/media/hero.png",
+    "motion": "demo/media/demo.webp",
+    "capture": "pnpm media:capture"
+  },
+  "demo": {
+    "strategy": "browser-terminal",
+    "local": "pnpm demo",
+    "externals": [
+      {
+        "name": "Agent host (Pi, OpenAI Codex or Claude Code)",
+        "type": "app",
+        "seam": "Host detection looks for ~/.claude, ~/.codex or ~/.pi/agent; the demo home has an empty ~/.claude",
+        "standIn": "omitted",
+        "note": "The roles and skill are really installed, into an empty Claude Code folder, but no agent runs them here."
+      }
+    ]
+  }
+}

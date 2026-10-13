@@ -1,0 +1,36 @@
+{
+  "project": "../..",
+  "pitch": "Staff any project with coordinated subagent roles. This is the real CLI, running in your browser, installing into an empty Claude Code setup.",
+  "mount": {
+    "node_modules/staffed": {
+      "from": "../..",
+      "include": ["agents", "packs", "catalog.json", "src", "bin", "models.json", "package.json", "README.md", "docs"]
+    },
+    ".": { "from": "./home" }
+  },
+  "env": {
+    "PATH": "~/bin:/usr/local/bin:/usr/bin:/bin"
+  },
+  "setup": [
+    "chmod +x bin/staffed"
+  ],
+  "welcome": [
+    "\u001b[1mStaffed\u001b[0m installs product-team roles (PM, UX, architect, builder, reviewer...) as subagents for Pi, Codex or Claude Code.",
+    "This sandbox has an empty ~/.claude folder, so it installs for Claude Code.",
+    "",
+    "  staffed enable --profile anthropic    install all eleven roles and the discovery skill",
+    "  staffed status                        what is installed, and which model each tier uses",
+    "  staffed compose pm decisive sceptic   check a role with modifiers, and what it means",
+    "  cat .claude/agents/pm.md              read a persona your agent will dispatch",
+    "",
+    "Or press the buttons above."
+  ],
+  "hints": [
+    "staffed enable --profile anthropic",
+    "staffed status",
+    "staffed compose pm decisive sceptic",
+    "cat .claude/agents/pm.md",
+    "staffed compose",
+    "staffed --help"
+  ]
+}
